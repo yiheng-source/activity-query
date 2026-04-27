@@ -3,238 +3,1189 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>範例活動 — 查詢系統</title>
+  <title>自強活動 — 查詢系統</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    :root {
-      --primary: #4f46e5;
-      --primary-dark: #3730a3;
-      --success: #10b981;
-      --error: #ef4444;
-      --text: #1e293b;
-      --muted: #64748b;
-      --border: #e2e8f0;
-      --radius: 12px;
+    :root{
+      --primary:#4f46e5;--primary-dark:#3730a3;
+      --success:#10b981;--error:#ef4444;
+      --text:#1e293b;--muted:#64748b;--border:#e2e8f0;--radius:12px;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Microsoft JhengHei', 'PingFang TC', Arial, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      font-family:"Microsoft JhengHei","PingFang TC",Arial,sans-serif;
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      min-height:100vh;display:flex;align-items:center;
+      justify-content:center;padding:16px;
     }
-    .card {
-      background: #fff;
-      border-radius: 20px;
-      padding: 36px;
-      width: 100%;
-      max-width: 460px;
-      box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+    .card{
+      background:#fff;border-radius:20px;padding:36px;
+      width:100%;max-width:460px;
+      box-shadow:0 25px 50px rgba(0,0,0,0.25);
     }
-    .logo { text-align: center; margin-bottom: 28px; }
-    .logo h1 { font-size: 1.6em; color: var(--text); font-weight: 700; }
-    .logo p { color: var(--muted); font-size: 0.9em; margin-top: 4px; }
-
-    .search-row { display: flex; gap: 8px; margin-bottom: 18px; }
-    .search-row input {
-      flex: 1;
-      padding: 13px 16px;
-      border: 2px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 1em;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s;
+    .logo{text-align:center;margin-bottom:28px;}
+    .logo h1{font-size:1.6em;color:var(--text);font-weight:700;}
+    .logo p{color:var(--muted);font-size:0.9em;margin-top:4px;}
+    .search-row{display:flex;gap:8px;margin-bottom:18px;}
+    .search-row input{
+      flex:1;padding:13px 16px;border:2px solid var(--border);
+      border-radius:var(--radius);font-size:1em;font-family:inherit;
+      outline:none;transition:border-color 0.2s;
     }
-    .search-row input:focus { border-color: var(--primary); }
-    .btn {
-      padding: 13px 22px;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 1em;
-      font-weight: 700;
-      cursor: pointer;
-      font-family: inherit;
-      transition: all 0.2s;
+    .search-row input:focus{border-color:var(--primary);}
+    .btn{
+      padding:13px 22px;border:none;border-radius:var(--radius);
+      font-size:1em;font-weight:700;cursor:pointer;
+      font-family:inherit;transition:all 0.2s;
     }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-primary:hover {
-      background: var(--primary-dark);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 14px rgba(79,70,229,0.35);
+    .btn-primary{background:var(--primary);color:#fff;}
+    .btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px);}
+    .btn-ghost{
+      width:100%;background:transparent;border:2px solid var(--border);
+      color:var(--muted);margin-top:8px;
     }
-    .btn-ghost {
-      width: 100%;
-      background: transparent;
-      border: 2px solid var(--border);
-      color: var(--muted);
-      margin-top: 8px;
+    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+    .result-card{
+      background:linear-gradient(135deg,#f0f9ff,#e0f2fe);
+      border:1px solid #bae6fd;border-radius:var(--radius);
+      padding:20px;margin-bottom:20px;
     }
-    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
-
-    .result-card {
-      background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-      border: 1px solid #bae6fd;
-      border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 20px;
+    .result-header{
+      display:flex;align-items:center;gap:10px;
+      margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #bae6fd;
     }
-    .result-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid #bae6fd;
+    .result-name{font-size:1.2em;font-weight:700;color:var(--text);}
+    .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .result-item{background:#fff;border-radius:8px;padding:12px;text-align:center;}
+    .result-item .lbl{font-size:0.75em;color:var(--muted);margin-bottom:4px;}
+    .result-item .val{font-size:1.05em;font-weight:700;color:var(--primary);}
+    .error-box{
+      background:#fef2f2;border:1px solid #fecaca;
+      border-radius:var(--radius);padding:16px;
+      text-align:center;color:var(--error);margin-bottom:20px;
     }
-    .result-name { font-size: 1.2em; font-weight: 700; color: var(--text); }
-    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .result-item {
-      background: #fff;
-      border-radius: 8px;
-      padding: 12px;
-      text-align: center;
+    .qr-wrap{
+      border-top:1px solid var(--border);padding-top:22px;
+      margin-top:6px;text-align:center;
     }
-    .result-item .lbl { font-size: 0.75em; color: var(--muted); margin-bottom: 4px; }
-    .result-item .val { font-size: 1.05em; font-weight: 700; color: var(--primary); }
-
-    .error-box {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      border-radius: var(--radius);
-      padding: 16px;
-      text-align: center;
-      color: var(--error);
-      margin-bottom: 20px;
+    .qr-wrap h3{
+      font-size:0.8em;color:var(--muted);text-transform:uppercase;
+      letter-spacing:0.07em;margin-bottom:14px;font-weight:700;
     }
-
-    .qr-wrap {
-      border-top: 1px solid var(--border);
-      padding-top: 22px;
-      margin-top: 6px;
-      text-align: center;
+    #qrcode{
+      display:inline-block;padding:12px;background:#fff;
+      border:1px solid var(--border);border-radius:10px;margin-bottom:10px;
     }
-    .qr-wrap h3 {
-      font-size: 0.8em;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      margin-bottom: 14px;
-      font-weight: 700;
-    }
-    #qrcode {
-      display: inline-block;
-      padding: 12px;
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      margin-bottom: 10px;
-    }
-    #qrcode canvas, #qrcode img { display: block; }
-    .qr-url {
-      font-size: 0.72em;
-      color: var(--muted);
-      word-break: break-all;
-      margin-bottom: 12px;
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .fade-in { animation: fadeUp 0.3s ease; }
+    #qrcode canvas,#qrcode img{display:block;}
+    .qr-url{font-size:0.72em;color:var(--muted);word-break:break-all;margin-bottom:12px;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .fade-in{animation:fadeUp 0.3s ease;}
   </style>
 </head>
 <body>
 <div class="card">
   <div class="logo">
-    <h1>🎉 範例活動</h1>
+    <h1>🎉 自強活動</h1>
     <p>員工活動資訊查詢</p>
   </div>
-
   <div class="search-row">
     <input type="text" id="emp-input" placeholder="請輸入員編"
            onkeydown="if(event.key==='Enter')doSearch()"
            autocomplete="off" inputmode="text">
     <button class="btn btn-primary" onclick="doSearch()">查詢</button>
   </div>
-
   <div id="result-area"></div>
-
   <div class="qr-wrap">
-    <h3>掃描 QR Code 開啟此查詢頁面</h3>
+    <h3>揃描 QR Code 開啟此查詢頁面</h3>
     <div id="qrcode"></div>
     <p class="qr-url" id="qr-url-text"></p>
     <button class="btn btn-ghost" onclick="downloadQR()">⬇️ 下載 QR Code 圖片</button>
   </div>
 </div>
-
 <script>
 var EMPLOYEE_DATA = [
-  {"name":"凌小恒","empId":"001","group":"黃","room":"100","table":"1"},
-  {"name":"張小涵","empId":"002","group":"綠","room":"101","table":"2"},
-  {"name":"王小美","empId":"003","group":"紅","room":"102","table":"3"},
-  {"name":"彭大凱","empId":"004","group":"藍","room":"103","table":"4"}
+  {
+    "name": "凌小恒",
+    "empId": "1001",
+    "group": "黃",
+    "room": "100",
+    "table": "1"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1002",
+    "group": "綠",
+    "room": "101",
+    "table": "2"
+  },
+  {
+    "name": "王小美",
+    "empId": "1003",
+    "group": "紅",
+    "room": "102",
+    "table": "3"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1004",
+    "group": "黃",
+    "room": "103",
+    "table": "4"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1005",
+    "group": "綠",
+    "room": "104",
+    "table": "5"
+  },
+  {
+    "name": "王小美",
+    "empId": "1006",
+    "group": "紅",
+    "room": "105",
+    "table": "6"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1007",
+    "group": "黃",
+    "room": "106",
+    "table": "7"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1008",
+    "group": "綠",
+    "room": "107",
+    "table": "8"
+  },
+  {
+    "name": "王小美",
+    "empId": "1009",
+    "group": "紅",
+    "room": "108",
+    "table": "9"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1010",
+    "group": "黃",
+    "room": "109",
+    "table": "10"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1011",
+    "group": "綠",
+    "room": "110",
+    "table": "1"
+  },
+  {
+    "name": "王小美",
+    "empId": "1012",
+    "group": "紅",
+    "room": "111",
+    "table": "2"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1013",
+    "group": "黃",
+    "room": "112",
+    "table": "3"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1014",
+    "group": "綠",
+    "room": "113",
+    "table": "4"
+  },
+  {
+    "name": "王小美",
+    "empId": "1015",
+    "group": "紅",
+    "room": "114",
+    "table": "5"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1016",
+    "group": "黃",
+    "room": "115",
+    "table": "6"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1017",
+    "group": "綠",
+    "room": "116",
+    "table": "7"
+  },
+  {
+    "name": "王小美",
+    "empId": "1018",
+    "group": "紅",
+    "room": "117",
+    "table": "8"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1019",
+    "group": "黃",
+    "room": "118",
+    "table": "9"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1020",
+    "group": "綠",
+    "room": "119",
+    "table": "10"
+  },
+  {
+    "name": "王小美",
+    "empId": "1021",
+    "group": "紅",
+    "room": "120",
+    "table": "1"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1022",
+    "group": "黃",
+    "room": "121",
+    "table": "2"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1023",
+    "group": "綠",
+    "room": "122",
+    "table": "3"
+  },
+  {
+    "name": "王小美",
+    "empId": "1024",
+    "group": "紅",
+    "room": "123",
+    "table": "4"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1025",
+    "group": "黃",
+    "room": "124",
+    "table": "5"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1026",
+    "group": "綠",
+    "room": "125",
+    "table": "6"
+  },
+  {
+    "name": "王小美",
+    "empId": "1027",
+    "group": "紅",
+    "room": "126",
+    "table": "7"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1028",
+    "group": "黃",
+    "room": "127",
+    "table": "8"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1029",
+    "group": "綠",
+    "room": "128",
+    "table": "9"
+  },
+  {
+    "name": "王小美",
+    "empId": "1030",
+    "group": "紅",
+    "room": "129",
+    "table": "10"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1031",
+    "group": "黃",
+    "room": "130",
+    "table": "1"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1032",
+    "group": "綠",
+    "room": "131",
+    "table": "2"
+  },
+  {
+    "name": "王小美",
+    "empId": "1033",
+    "group": "紅",
+    "room": "132",
+    "table": "3"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1034",
+    "group": "黃",
+    "room": "133",
+    "table": "4"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1035",
+    "group": "綠",
+    "room": "134",
+    "table": "5"
+  },
+  {
+    "name": "王小美",
+    "empId": "1036",
+    "group": "紅",
+    "room": "135",
+    "table": "6"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1037",
+    "group": "黃",
+    "room": "136",
+    "table": "7"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1038",
+    "group": "綠",
+    "room": "137",
+    "table": "8"
+  },
+  {
+    "name": "王小美",
+    "empId": "1039",
+    "group": "紅",
+    "room": "138",
+    "table": "9"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1040",
+    "group": "黃",
+    "room": "139",
+    "table": "10"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1041",
+    "group": "綠",
+    "room": "140",
+    "table": "1"
+  },
+  {
+    "name": "王小美",
+    "empId": "1042",
+    "group": "紅",
+    "room": "141",
+    "table": "2"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1043",
+    "group": "黃",
+    "room": "142",
+    "table": "3"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1044",
+    "group": "綠",
+    "room": "143",
+    "table": "4"
+  },
+  {
+    "name": "王小美",
+    "empId": "1045",
+    "group": "紅",
+    "room": "144",
+    "table": "5"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1046",
+    "group": "黃",
+    "room": "145",
+    "table": "6"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1047",
+    "group": "綠",
+    "room": "146",
+    "table": "7"
+  },
+  {
+    "name": "王小美",
+    "empId": "1048",
+    "group": "紅",
+    "room": "147",
+    "table": "8"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1049",
+    "group": "黃",
+    "room": "148",
+    "table": "9"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1050",
+    "group": "綠",
+    "room": "149",
+    "table": "10"
+  },
+  {
+    "name": "王小美",
+    "empId": "1051",
+    "group": "紅",
+    "room": "150",
+    "table": "1"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1052",
+    "group": "黃",
+    "room": "151",
+    "table": "2"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1053",
+    "group": "綠",
+    "room": "152",
+    "table": "3"
+  },
+  {
+    "name": "王小美",
+    "empId": "1054",
+    "group": "紅",
+    "room": "153",
+    "table": "4"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1055",
+    "group": "黃",
+    "room": "154",
+    "table": "5"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1056",
+    "group": "綠",
+    "room": "155",
+    "table": "6"
+  },
+  {
+    "name": "王小美",
+    "empId": "1057",
+    "group": "紅",
+    "room": "156",
+    "table": "7"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1058",
+    "group": "黃",
+    "room": "157",
+    "table": "8"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1059",
+    "group": "綠",
+    "room": "158",
+    "table": "9"
+  },
+  {
+    "name": "王小美",
+    "empId": "1060",
+    "group": "紅",
+    "room": "159",
+    "table": "10"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1061",
+    "group": "黃",
+    "room": "160",
+    "table": "1"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1062",
+    "group": "綠",
+    "room": "161",
+    "table": "2"
+  },
+  {
+    "name": "王小美",
+    "empId": "1063",
+    "group": "紅",
+    "room": "162",
+    "table": "3"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1064",
+    "group": "黃",
+    "room": "163",
+    "table": "4"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1065",
+    "group": "綠",
+    "room": "164",
+    "table": "5"
+  },
+  {
+    "name": "王小美",
+    "empId": "1066",
+    "group": "紅",
+    "room": "165",
+    "table": "6"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1067",
+    "group": "黃",
+    "room": "166",
+    "table": "7"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1068",
+    "group": "綠",
+    "room": "167",
+    "table": "8"
+  },
+  {
+    "name": "王小美",
+    "empId": "1069",
+    "group": "紅",
+    "room": "168",
+    "table": "9"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1070",
+    "group": "黃",
+    "room": "169",
+    "table": "10"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1071",
+    "group": "綠",
+    "room": "170",
+    "table": "1"
+  },
+  {
+    "name": "王小美",
+    "empId": "1072",
+    "group": "紅",
+    "room": "171",
+    "table": "2"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1073",
+    "group": "黃",
+    "room": "172",
+    "table": "3"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1074",
+    "group": "綠",
+    "room": "173",
+    "table": "4"
+  },
+  {
+    "name": "王小美",
+    "empId": "1075",
+    "group": "紅",
+    "room": "174",
+    "table": "5"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1076",
+    "group": "黃",
+    "room": "175",
+    "table": "6"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1077",
+    "group": "綠",
+    "room": "176",
+    "table": "7"
+  },
+  {
+    "name": "王小美",
+    "empId": "1078",
+    "group": "紅",
+    "room": "177",
+    "table": "8"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1079",
+    "group": "黃",
+    "room": "178",
+    "table": "9"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1080",
+    "group": "綠",
+    "room": "179",
+    "table": "10"
+  },
+  {
+    "name": "王小美",
+    "empId": "1081",
+    "group": "紅",
+    "room": "180",
+    "table": "1"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1082",
+    "group": "黃",
+    "room": "181",
+    "table": "2"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1083",
+    "group": "綠",
+    "room": "182",
+    "table": "3"
+  },
+  {
+    "name": "王小美",
+    "empId": "1084",
+    "group": "紅",
+    "room": "183",
+    "table": "4"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1085",
+    "group": "黃",
+    "room": "184",
+    "table": "5"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1086",
+    "group": "綠",
+    "room": "185",
+    "table": "6"
+  },
+  {
+    "name": "王小美",
+    "empId": "1087",
+    "group": "紅",
+    "room": "186",
+    "table": "7"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1088",
+    "group": "黃",
+    "room": "187",
+    "table": "8"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1089",
+    "group": "綠",
+    "room": "188",
+    "table": "9"
+  },
+  {
+    "name": "王小美",
+    "empId": "1090",
+    "group": "紅",
+    "room": "189",
+    "table": "10"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1091",
+    "group": "黃",
+    "room": "190",
+    "table": "1"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1092",
+    "group": "綠",
+    "room": "191",
+    "table": "2"
+  },
+  {
+    "name": "王小美",
+    "empId": "1093",
+    "group": "紅",
+    "room": "192",
+    "table": "3"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1094",
+    "group": "黃",
+    "room": "193",
+    "table": "4"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1095",
+    "group": "綠",
+    "room": "194",
+    "table": "5"
+  },
+  {
+    "name": "王小美",
+    "empId": "1096",
+    "group": "紅",
+    "room": "195",
+    "table": "6"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1097",
+    "group": "黃",
+    "room": "196",
+    "table": "7"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1098",
+    "group": "綠",
+    "room": "197",
+    "table": "8"
+  },
+  {
+    "name": "王小美",
+    "empId": "1099",
+    "group": "紅",
+    "room": "198",
+    "table": "9"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1100",
+    "group": "黃",
+    "room": "199",
+    "table": "10"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1101",
+    "group": "綠",
+    "room": "200",
+    "table": "1"
+  },
+  {
+    "name": "王小美",
+    "empId": "1102",
+    "group": "紅",
+    "room": "201",
+    "table": "2"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1103",
+    "group": "黃",
+    "room": "202",
+    "table": "3"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1104",
+    "group": "綠",
+    "room": "203",
+    "table": "4"
+  },
+  {
+    "name": "王小美",
+    "empId": "1105",
+    "group": "紅",
+    "room": "204",
+    "table": "5"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1106",
+    "group": "黃",
+    "room": "205",
+    "table": "6"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1107",
+    "group": "綠",
+    "room": "206",
+    "table": "7"
+  },
+  {
+    "name": "王小美",
+    "empId": "1108",
+    "group": "紅",
+    "room": "207",
+    "table": "8"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1109",
+    "group": "黃",
+    "room": "208",
+    "table": "9"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1110",
+    "group": "綠",
+    "room": "209",
+    "table": "10"
+  },
+  {
+    "name": "王小美",
+    "empId": "1111",
+    "group": "紅",
+    "room": "210",
+    "table": "1"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1112",
+    "group": "黃",
+    "room": "211",
+    "table": "2"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1113",
+    "group": "綠",
+    "room": "212",
+    "table": "3"
+  },
+  {
+    "name": "王小美",
+    "empId": "1114",
+    "group": "紅",
+    "room": "213",
+    "table": "4"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1115",
+    "group": "黃",
+    "room": "214",
+    "table": "5"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1116",
+    "group": "綠",
+    "room": "215",
+    "table": "6"
+  },
+  {
+    "name": "王小美",
+    "empId": "1117",
+    "group": "紅",
+    "room": "216",
+    "table": "7"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1118",
+    "group": "黃",
+    "room": "217",
+    "table": "8"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1119",
+    "group": "綠",
+    "room": "218",
+    "table": "9"
+  },
+  {
+    "name": "王小美",
+    "empId": "1120",
+    "group": "紅",
+    "room": "219",
+    "table": "10"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1121",
+    "group": "黃",
+    "room": "220",
+    "table": "1"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1122",
+    "group": "綠",
+    "room": "221",
+    "table": "2"
+  },
+  {
+    "name": "王小美",
+    "empId": "1123",
+    "group": "紅",
+    "room": "222",
+    "table": "3"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1124",
+    "group": "黃",
+    "room": "223",
+    "table": "4"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1125",
+    "group": "綠",
+    "room": "224",
+    "table": "5"
+  },
+  {
+    "name": "王小美",
+    "empId": "1126",
+    "group": "紅",
+    "room": "225",
+    "table": "6"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1127",
+    "group": "黃",
+    "room": "226",
+    "table": "7"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1128",
+    "group": "綠",
+    "room": "227",
+    "table": "8"
+  },
+  {
+    "name": "王小美",
+    "empId": "1129",
+    "group": "紅",
+    "room": "228",
+    "table": "9"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1130",
+    "group": "黃",
+    "room": "229",
+    "table": "10"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1131",
+    "group": "綠",
+    "room": "230",
+    "table": "1"
+  },
+  {
+    "name": "王小美",
+    "empId": "1132",
+    "group": "紅",
+    "room": "231",
+    "table": "2"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1133",
+    "group": "黃",
+    "room": "232",
+    "table": "3"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1134",
+    "group": "綠",
+    "room": "233",
+    "table": "4"
+  },
+  {
+    "name": "王小美",
+    "empId": "1135",
+    "group": "紅",
+    "room": "234",
+    "table": "5"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1136",
+    "group": "黃",
+    "room": "235",
+    "table": "6"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1137",
+    "group": "綠",
+    "room": "236",
+    "table": "7"
+  },
+  {
+    "name": "王小美",
+    "empId": "1138",
+    "group": "紅",
+    "room": "237",
+    "table": "8"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1139",
+    "group": "黃",
+    "room": "238",
+    "table": "9"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1140",
+    "group": "綠",
+    "room": "239",
+    "table": "10"
+  },
+  {
+    "name": "王小美",
+    "empId": "1141",
+    "group": "紅",
+    "room": "240",
+    "table": "1"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1142",
+    "group": "黃",
+    "room": "241",
+    "table": "2"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1143",
+    "group": "綠",
+    "room": "242",
+    "table": "3"
+  },
+  {
+    "name": "王小美",
+    "empId": "1144",
+    "group": "紅",
+    "room": "243",
+    "table": "4"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1145",
+    "group": "黃",
+    "room": "244",
+    "table": "5"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1146",
+    "group": "綠",
+    "room": "245",
+    "table": "6"
+  },
+  {
+    "name": "王小美",
+    "empId": "1147",
+    "group": "紅",
+    "room": "246",
+    "table": "7"
+  },
+  {
+    "name": "凌小恒",
+    "empId": "1148",
+    "group": "黃",
+    "room": "247",
+    "table": "8"
+  },
+  {
+    "name": "張小涵",
+    "empId": "1149",
+    "group": "黃",
+    "room": "248",
+    "table": "9"
+  }
 ];
-
-window.addEventListener('DOMContentLoaded', function () {
-  var url = window.location.href;
-  document.getElementById('qr-url-text').textContent = url;
-  new QRCode(document.getElementById('qrcode'), {
-    text: url,
-    width: 180,
-    height: 180,
-    colorDark: '#1e293b',
-    colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.M
+window.addEventListener("DOMContentLoaded",function(){
+  var url=window.location.href;
+  document.getElementById("qr-url-text").textContent=url;
+  new QRCode(document.getElementById("qrcode"),{
+    text:url,width:180,height:180,
+    colorDark:"#1e293b",colorLight:"#ffffff",
+    correctLevel:QRCode.CorrectLevel.M
   });
 });
-
-function doSearch() {
-  var empId = document.getElementById('emp-input').value.trim();
-  var area  = document.getElementById('result-area');
-  if (!empId) {
-    area.innerHTML = '<div class="error-box fade-in">請輸入員編後再查詢</div>';
-    return;
-  }
-  var found = null;
-  for (var i = 0; i < EMPLOYEE_DATA.length; i++) {
-    if (EMPLOYEE_DATA[i].empId === empId) { found = EMPLOYEE_DATA[i]; break; }
-  }
-  if (found) {
-    area.innerHTML =
-      '<div class="result-card fade-in">' +
-        '<div class="result-header">' +
-          '<span style="font-size:1.6em">✅</span>' +
-          '<span class="result-name">' + esc(found.name) + '</span>' +
-        '</div>' +
-        '<div class="result-grid">' +
-          '<div class="result-item"><div class="lbl">員編</div><div class="val">' + esc(found.empId) + '</div></div>' +
-          '<div class="result-item"><div class="lbl">組別</div><div class="val">' + esc(found.group) + '</div></div>' +
-          '<div class="result-item"><div class="lbl">房號</div><div class="val">' + esc(found.room) + '</div></div>' +
-          '<div class="result-item"><div class="lbl">晚宴桌次</div><div class="val">' + esc(found.table) + '</div></div>' +
-        '</div>' +
-      '</div>';
-  } else {
-    area.innerHTML = '<div class="error-box fade-in">❌ 查無員編「' + esc(empId) + '」，請確認後再試</div>';
+function doSearch(){
+  var empId=document.getElementById("emp-input").value.trim();
+  var area=document.getElementById("result-area");
+  if(!empId){area.innerHTML='<div class="error-box fade-in">請輸入員編後再查詢</div>';return;}
+  var found=null;
+  for(var i=0;i<EMPLOYEE_DATA.length;i++){if(EMPLOYEE_DATA[i].empId===empId){found=EMPLOYEE_DATA[i];break;}}
+  if(found){
+    area.innerHTML='<div class="result-card fade-in"><div class="result-header"><span style="font-size:1.6em">✅</span><span class="result-name">'+esc(found.name)+'</span></div>'+
+    '<div class="result-grid">'+
+    '<div class="result-item"><div class="lbl">員編</div><div class="val">'+esc(found.empId)+'</div></div>'+
+    '<div class="result-item"><div class="lbl">組別</div><div class="val">'+esc(found.group)+'</div></div>'+
+    '<div class="result-item"><div class="lbl">房號</div><div class="val">'+esc(found.room)+'</div></div>'+
+    '<div class="result-item"><div class="lbl">晚宴桌次</div><div class="val">'+esc(found.table)+'</div></div>'+
+    '</div></div>';
+  }else{
+    area.innerHTML='<div class="error-box fade-in">❌ 查無員編「'+esc(empId)+'」，請確認後再試</div>';
   }
 }
-
-function downloadQR() {
-  var canvas = document.querySelector('#qrcode canvas');
-  var img    = document.querySelector('#qrcode img');
-  var src    = canvas ? canvas.toDataURL('image/png') : (img ? img.src : null);
-  if (!src) { alert('QR Code 尚未生成'); return; }
-  var a = document.createElement('a');
-  a.href = src; a.download = '活動查詢QRCode.png';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+function downloadQR(){
+  var canvas=document.querySelector("#qrcode canvas");
+  var img=document.querySelector("#qrcode img");
+  var src=canvas?canvas.toDataURL("image/png"):(img?img.src:null);
+  if(!src){alert("QR Code 尚未生成");return;}
+  var a=document.createElement("a");
+  a.href=src;a.download="活動查詢QRCode.png";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
-
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function esc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 </script>
 </body>
