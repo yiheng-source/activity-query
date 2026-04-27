@@ -1,10 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>活動查詢系統</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <title>範例活動 — 查詢系統</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
@@ -12,10 +11,6 @@
       --primary-dark: #3730a3;
       --success: #10b981;
       --error: #ef4444;
-      --warn-bg: #fffbeb;
-      --warn-border: #fde68a;
-      --warn-text: #92400e;
-      --bg: #f1f5f9;
       --text: #1e293b;
       --muted: #64748b;
       --border: #e2e8f0;
@@ -42,115 +37,7 @@
     .logo { text-align: center; margin-bottom: 28px; }
     .logo h1 { font-size: 1.6em; color: var(--text); font-weight: 700; }
     .logo p { color: var(--muted); font-size: 0.9em; margin-top: 4px; }
-    .badge {
-      display: inline-block;
-      background: var(--warn-bg);
-      color: var(--warn-text);
-      font-size: 0.72em;
-      padding: 2px 10px;
-      border-radius: 20px;
-      margin-left: 8px;
-      font-weight: 700;
-      vertical-align: middle;
-    }
 
-    /* ── Upload ── */
-    .upload-zone {
-      border: 2px dashed var(--border);
-      border-radius: var(--radius);
-      padding: 32px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin-bottom: 16px;
-    }
-    .upload-zone:hover, .upload-zone.drag-over {
-      border-color: var(--primary);
-      background: #f0f0ff;
-    }
-    .upload-zone .icon { font-size: 2.5em; margin-bottom: 8px; }
-    .upload-zone p { color: var(--muted); font-size: 0.9em; }
-    .upload-zone .hint { font-size: 0.8em; color: #aaa; margin-top: 4px; }
-    .upload-zone input[type="file"] { display: none; }
-
-    /* ── Event title input ── */
-    .field { margin-bottom: 14px; }
-    .field label { display: block; font-size: 0.85em; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
-    .field input[type="text"] {
-      width: 100%;
-      padding: 10px 14px;
-      border: 2px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.95em;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .field input[type="text"]:focus { border-color: var(--primary); }
-
-    /* ── Preview ── */
-    .preview {
-      background: #f0fdf4;
-      border: 1px solid #86efac;
-      border-radius: 8px;
-      padding: 12px 16px;
-      margin-bottom: 14px;
-      font-size: 0.88em;
-      color: var(--text);
-    }
-    .preview .count { font-weight: 700; color: var(--success); }
-
-    /* ── Column map ── */
-    .col-map {
-      background: var(--warn-bg);
-      border: 1px solid var(--warn-border);
-      border-radius: 8px;
-      padding: 14px 16px;
-      margin-bottom: 14px;
-      font-size: 0.85em;
-    }
-    .col-map h4 { color: var(--warn-text); margin-bottom: 10px; }
-    .col-map .col-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .col-map .col-row label { width: 72px; color: var(--text); font-weight: 600; flex-shrink: 0; }
-    .col-map select {
-      flex: 1;
-      padding: 5px 8px;
-      border: 1px solid var(--warn-border);
-      border-radius: 6px;
-      font-family: inherit;
-      font-size: 0.9em;
-      background: #fff;
-    }
-    .col-map .ok { color: var(--success); font-size: 1.1em; }
-
-    /* ── Buttons ── */
-    .btn {
-      width: 100%;
-      padding: 13px;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 1em;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-family: inherit;
-    }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-primary:hover:not(:disabled) {
-      background: var(--primary-dark);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 14px rgba(79,70,229,0.35);
-    }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-ghost {
-      background: transparent;
-      border: 2px solid var(--border);
-      color: var(--muted);
-      margin-top: 8px;
-    }
-    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
-
-    /* ── Search ── */
     .search-row { display: flex; gap: 8px; margin-bottom: 18px; }
     .search-row input {
       flex: 1;
@@ -163,9 +50,31 @@
       transition: border-color 0.2s;
     }
     .search-row input:focus { border-color: var(--primary); }
-    .search-row .btn { width: auto; padding: 13px 22px; }
+    .btn {
+      padding: 13px 22px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1em;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(79,70,229,0.35);
+    }
+    .btn-ghost {
+      width: 100%;
+      background: transparent;
+      border: 2px solid var(--border);
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
 
-    /* ── Result card ── */
     .result-card {
       background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
       border: 1px solid #bae6fd;
@@ -192,7 +101,6 @@
     .result-item .lbl { font-size: 0.75em; color: var(--muted); margin-bottom: 4px; }
     .result-item .val { font-size: 1.05em; font-weight: 700; color: var(--primary); }
 
-    /* ── Error ── */
     .error-box {
       background: #fef2f2;
       border: 1px solid #fecaca;
@@ -201,10 +109,8 @@
       text-align: center;
       color: var(--error);
       margin-bottom: 20px;
-      font-size: 0.95em;
     }
 
-    /* ── QR ── */
     .qr-wrap {
       border-top: 1px solid var(--border);
       padding-top: 22px;
@@ -233,398 +139,102 @@
       color: var(--muted);
       word-break: break-all;
       margin-bottom: 12px;
-      padding: 0 4px;
-    }
-    .local-note {
-      background: var(--warn-bg);
-      border: 1px solid var(--warn-border);
-      border-radius: 8px;
-      padding: 12px 14px;
-      color: var(--warn-text);
-      font-size: 0.82em;
-      margin-top: 12px;
-      line-height: 1.5;
     }
 
-    /* ── Animations ── */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(8px); }
       to   { opacity: 1; transform: translateY(0); }
     }
     .fade-in { animation: fadeUp 0.3s ease; }
-
-    /* ── Sections visibility ── */
-    #setup-section, #query-section { display: none; }
   </style>
 </head>
 <body>
 <div class="card">
-
   <div class="logo">
-    <h1 id="page-title">🎉 活動查詢系統</h1>
-    <p id="page-subtitle">員工活動資訊查詢</p>
+    <h1>🎉 範例活動</h1>
+    <p>員工活動資訊查詢</p>
   </div>
 
-  <!-- ════════════════════════════════════
-       SETUP SECTION (admin / builder)
-  ════════════════════════════════════ -->
-  <div id="setup-section">
-
-    <div class="field">
-      <label>活動名稱（選填）</label>
-      <input type="text" id="event-name" placeholder="例：2025 年度員工旅遊">
-    </div>
-
-    <div class="upload-zone" id="upload-zone"
-         onclick="document.getElementById('file-input').click()">
-      <div class="icon">📊</div>
-      <p>點擊或拖放 Excel 檔案</p>
-      <p class="hint">支援 .xlsx / .xls 格式</p>
-      <input type="file" id="file-input" accept=".xlsx,.xls">
-    </div>
-
-    <div id="preview-area" style="display:none">
-      <div class="preview" id="preview-text"></div>
-
-      <div class="col-map" id="col-map" style="display:none">
-        <h4>⚠️ 請確認或選擇欄位對應</h4>
-        <div id="col-rows"></div>
-      </div>
-
-      <button class="btn btn-primary" id="gen-btn" onclick="generateQueryPage()">
-        ⬇️ 生成查詢頁面
-      </button>
-      <button class="btn btn-ghost" onclick="resetSetup()">重新上傳</button>
-    </div>
-
-    <p id="upload-hint" style="text-align:center;color:var(--muted);font-size:0.82em;margin-top:14px;">
-      上傳後將生成含資料的獨立查詢頁面，供員工使用
-    </p>
+  <div class="search-row">
+    <input type="text" id="emp-input" placeholder="請輸入員編"
+           onkeydown="if(event.key==='Enter')doSearch()"
+           autocomplete="off" inputmode="text">
+    <button class="btn btn-primary" onclick="doSearch()">查詢</button>
   </div>
 
-  <!-- ════════════════════════════════════
-       QUERY SECTION (employees)
-  ════════════════════════════════════ -->
-  <div id="query-section">
-    <div class="search-row">
-      <input type="text" id="emp-input" placeholder="請輸入員編"
-             onkeydown="if(event.key==='Enter')doSearch()"
-             autocomplete="off" inputmode="text">
-      <button class="btn btn-primary" onclick="doSearch()">查詢</button>
-    </div>
+  <div id="result-area"></div>
 
-    <div id="result-area"></div>
-
-    <div class="qr-wrap" id="qr-wrap" style="display:none">
-      <h3>掃描 QR Code 開啟此查詢頁面</h3>
-      <div id="qrcode"></div>
-      <p class="qr-url" id="qr-url"></p>
-      <button class="btn btn-ghost" onclick="downloadQR()">⬇️ 下載 QR Code 圖片</button>
-    </div>
-
-    <div id="local-note" style="display:none">
-      <div class="local-note">
-        ⚠️ 目前以本機檔案開啟，QR Code 無法分享。<br>
-        請將此 HTML 上傳至網路伺服器（如 GitHub Pages、Netlify）後，頁面將自動顯示可分享的 QR Code。
-      </div>
-    </div>
+  <div class="qr-wrap">
+    <h3>掃描 QR Code 開啟此查詢頁面</h3>
+    <div id="qrcode"></div>
+    <p class="qr-url" id="qr-url-text"></p>
+    <button class="btn btn-ghost" onclick="downloadQR()">⬇️ 下載 QR Code 圖片</button>
   </div>
-
 </div>
 
 <script>
-/* ══════════════════════════════════════════
-   DATA — replaced when building query page
-══════════════════════════════════════════ */
-/*__EMPDATA_START__*/
-var EMPLOYEE_DATA = [{"name":"凌小恒","empId":"001","group":"黃","room":"100","table":"1"},{"name":"張小涵","empId":"002","group":"綠","room":"101","table":"2"},{"name":"王小美","empId":"003","group":"紅","room":"102","table":"3"},{"name":"彭大凱","empId":"004","group":"藍","room":"103","table":"4"}];
-var EVENT_TITLE   = "範例活動";
-/*__EMPDATA_END__*/
-
-/* ══════════════════ INIT ══════════════════ */
-var parsedRows   = [];
-var colHeaders   = [];
-var mappedCols   = {};
+var EMPLOYEE_DATA = [
+  {"name":"凌小恒","empId":"001","group":"黃","room":"100","table":"1"},
+  {"name":"張小涵","empId":"002","group":"綠","room":"101","table":"2"},
+  {"name":"王小美","empId":"003","group":"紅","room":"102","table":"3"},
+  {"name":"彭大凱","empId":"004","group":"藍","room":"103","table":"4"}
+];
 
 window.addEventListener('DOMContentLoaded', function () {
-  if (EMPLOYEE_DATA && EMPLOYEE_DATA.length > 0) {
-    if (EVENT_TITLE) {
-      document.getElementById('page-title').textContent = '🎉 ' + EVENT_TITLE;
-      document.title = EVENT_TITLE + ' — 查詢系統';
-    }
-    showQueryMode();
-  } else {
-    showSetupMode();
-  }
+  var url = window.location.href;
+  document.getElementById('qr-url-text').textContent = url;
+  new QRCode(document.getElementById('qrcode'), {
+    text: url,
+    width: 180,
+    height: 180,
+    colorDark: '#1e293b',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
 });
 
-function showSetupMode() {
-  document.getElementById('page-subtitle').textContent = '主辦方設定';
-  document.getElementById('setup-section').style.display = 'block';
-  setupDragDrop();
-}
-
-function showQueryMode() {
-  document.getElementById('setup-section').style.display = 'none';
-  document.getElementById('query-section').style.display = 'block';
-  initQR();
-}
-
-/* ══════════════════ UPLOAD ══════════════════ */
-function setupDragDrop() {
-  var zone  = document.getElementById('upload-zone');
-  var input = document.getElementById('file-input');
-
-  zone.addEventListener('dragover', function (e) {
-    e.preventDefault(); zone.classList.add('drag-over');
-  });
-  zone.addEventListener('dragleave', function () {
-    zone.classList.remove('drag-over');
-  });
-  zone.addEventListener('drop', function (e) {
-    e.preventDefault(); zone.classList.remove('drag-over');
-    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-  });
-  input.addEventListener('change', function () {
-    if (this.files[0]) handleFile(this.files[0]);
-  });
-}
-
-function handleFile(file) {
-  var reader = new FileReader();
-  reader.onload = function (e) {
-    try {
-      var wb  = XLSX.read(e.target.result, { type: 'array', cellText: true, cellDates: true });
-      var ws  = wb.Sheets[wb.SheetNames[0]];
-      var json = XLSX.utils.sheet_to_json(ws, { raw: false, defval: '' });
-      if (!json || json.length === 0) {
-        return alert('Excel 沒有資料，請確認格式（第一列需為欄位標題）');
-      }
-      parsedRows = json;
-      colHeaders = Object.keys(json[0]);
-      detectColumns();
-      renderPreview(json.length);
-    } catch (err) {
-      alert('讀取失敗：' + err.message);
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-/* ══════════════════ COLUMN DETECTION ══════════════════ */
-var COL_DEFS = {
-  name:  { label: '姓名',    aliases: ['姓名','name','名字','员工姓名'] },
-  empId: { label: '員編',    aliases: ['員編','員工編號','工號','emp_id','empid','employee_id','员编','员工编号'] },
-  group: { label: '組別',    aliases: ['組別','組','小組','group','隊別','分組','队别','组别'] },
-  room:  { label: '房號',    aliases: ['房號','房間','房間號','room','住房','room_no','房间','房号'] },
-  table: { label: '晚宴桌次', aliases: ['晚宴桌次','桌次','桌號','table','dinner_table','餐桌','桌号'] }
-};
-
-function findColAlias(headers, aliases) {
-  var lower = headers.map(function (h) { return String(h).toLowerCase().trim(); });
-  for (var i = 0; i < aliases.length; i++) {
-    var idx = lower.indexOf(aliases[i].toLowerCase());
-    if (idx >= 0) return headers[idx];
-  }
-  return null;
-}
-
-function detectColumns() {
-  mappedCols = {};
-  for (var key in COL_DEFS) {
-    var col = findColAlias(colHeaders, COL_DEFS[key].aliases);
-    if (col) mappedCols[key] = col;
-  }
-}
-
-/* ══════════════════ PREVIEW & COL MAP ══════════════════ */
-function renderPreview(count) {
-  document.getElementById('upload-hint').style.display = 'none';
-  document.getElementById('preview-area').style.display = 'block';
-
-  var missing = Object.keys(COL_DEFS).filter(function (k) { return !mappedCols[k]; });
-
-  var txt = '<span class="count">✅ 已讀取 ' + count + ' 筆資料</span>';
-  if (missing.length === 0) {
-    txt += '&nbsp;&nbsp;欄位自動對應完成';
-  } else {
-    txt += '&nbsp;&nbsp;⚠️ 部分欄位需手動選擇';
-  }
-  document.getElementById('preview-text').innerHTML = txt;
-
-  renderColMap();
-}
-
-function renderColMap() {
-  var mapDiv = document.getElementById('col-map');
-  var rowDiv = document.getElementById('col-rows');
-
-  var html = '';
-  for (var key in COL_DEFS) {
-    var found = mappedCols[key];
-    html += '<div class="col-row">';
-    html += '<label>' + COL_DEFS[key].label + '</label>';
-    if (found) {
-      html += '<span class="ok">✅</span>';
-      html += '<select id="sel_' + key + '" onchange="mappedCols[\'' + key + '\']=this.value">';
-    } else {
-      html += '<select id="sel_' + key + '" onchange="mappedCols[\'' + key + '\']=this.value">';
-      html += '<option value="">-- 請選擇 --</option>';
-    }
-    for (var i = 0; i < colHeaders.length; i++) {
-      var h = colHeaders[i];
-      var sel = (h === found) ? ' selected' : '';
-      html += '<option value="' + escHtml(h) + '"' + sel + '>' + escHtml(h) + '</option>';
-    }
-    html += '</select>';
-    html += '</div>';
-  }
-  rowDiv.innerHTML = html;
-  mapDiv.style.display = 'block';
-}
-
-function resetSetup() {
-  parsedRows = []; colHeaders = []; mappedCols = {};
-  document.getElementById('file-input').value = '';
-  document.getElementById('preview-area').style.display = 'none';
-  document.getElementById('upload-hint').style.display = 'block';
-}
-
-/* ══════════════════ GENERATE ══════════════════ */
-function generateQueryPage() {
-  // Collect selections from dropdowns
-  for (var key in COL_DEFS) {
-    var sel = document.getElementById('sel_' + key);
-    if (sel && sel.value) mappedCols[key] = sel.value;
-    if (!mappedCols[key]) {
-      return alert('請選擇「' + COL_DEFS[key].label + '」對應的欄位');
-    }
-  }
-
-  var employees = parsedRows.map(function (row) {
-    return {
-      name:  String(row[mappedCols.name]  || '').trim(),
-      empId: String(row[mappedCols.empId] || '').trim(),
-      group: String(row[mappedCols.group] || '').trim(),
-      room:  String(row[mappedCols.room]  || '').trim(),
-      table: String(row[mappedCols.table] || '').trim()
-    };
-  }).filter(function (e) { return e.empId !== ''; });
-
-  if (employees.length === 0) {
-    return alert('沒有有效資料，請確認「員編」欄位是否正確');
-  }
-
-  var eventName = document.getElementById('event-name').value.trim();
-
-  // Safe JSON (prevent </script> injection)
-  function safeJSON(obj) {
-    return JSON.stringify(obj).replace(/<\//g, '<\\/');
-  }
-
-  var dataBlock =
-    '/*__EMPDATA_START__*/
-var EMPLOYEE_DATA = [{"name":"凌小恒","empId":"001","group":"黃","room":"100","table":"1"},{"name":"張小涵","empId":"002","group":"綠","room":"101","table":"2"},{"name":"王小美","empId":"003","group":"紅","room":"102","table":"3"},{"name":"彭大凱","empId":"004","group":"藍","room":"103","table":"4"}];
-var EVENT_TITLE   = "範例活動";
-/*__EMPDATA_END__*/';
-
-  var srcHTML = document.documentElement.outerHTML;
-  var newHTML = srcHTML.replace(
-    /\/\*__EMPDATA_START__\*\/[\s\S]*?\/\*__EMPDATA_END__\*\//,
-    dataBlock
-  );
-
-  var blob = new Blob([newHTML], { type: 'text/html;charset=utf-8' });
-  var url  = URL.createObjectURL(blob);
-  var a    = document.createElement('a');
-  a.href = url; a.download = '活動查詢頁面.html';
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  alert(
-    '✅ 已生成「活動查詢頁面.html」（共 ' + employees.length + ' 筆）\n\n' +
-    '下一步：\n' +
-    '1. 將此檔案上傳至網路伺服器\n' +
-    '   （如 GitHub Pages、Netlify、公司內網）\n' +
-    '2. 開啟頁面後即可看到 QR Code\n' +
-    '3. 列印或展示 QR Code 供員工掃描查詢'
-  );
-}
-
-/* ══════════════════ SEARCH ══════════════════ */
 function doSearch() {
   var empId = document.getElementById('emp-input').value.trim();
   var area  = document.getElementById('result-area');
-
   if (!empId) {
     area.innerHTML = '<div class="error-box fade-in">請輸入員編後再查詢</div>';
     return;
   }
-
   var found = null;
   for (var i = 0; i < EMPLOYEE_DATA.length; i++) {
     if (EMPLOYEE_DATA[i].empId === empId) { found = EMPLOYEE_DATA[i]; break; }
   }
-
   if (found) {
     area.innerHTML =
       '<div class="result-card fade-in">' +
         '<div class="result-header">' +
           '<span style="font-size:1.6em">✅</span>' +
-          '<span class="result-name">' + escHtml(found.name) + '</span>' +
+          '<span class="result-name">' + esc(found.name) + '</span>' +
         '</div>' +
         '<div class="result-grid">' +
-          '<div class="result-item"><div class="lbl">員編</div><div class="val">' + escHtml(found.empId) + '</div></div>' +
-          '<div class="result-item"><div class="lbl">組別</div><div class="val">' + escHtml(found.group) + '</div></div>' +
-          '<div class="result-item"><div class="lbl">房號</div><div class="val">' + escHtml(found.room) + '</div></div>' +
-          '<div class="result-item"><div class="lbl">晚宴桌次</div><div class="val">' + escHtml(found.table) + '</div></div>' +
+          '<div class="result-item"><div class="lbl">員編</div><div class="val">' + esc(found.empId) + '</div></div>' +
+          '<div class="result-item"><div class="lbl">組別</div><div class="val">' + esc(found.group) + '</div></div>' +
+          '<div class="result-item"><div class="lbl">房號</div><div class="val">' + esc(found.room) + '</div></div>' +
+          '<div class="result-item"><div class="lbl">晚宴桌次</div><div class="val">' + esc(found.table) + '</div></div>' +
         '</div>' +
       '</div>';
   } else {
-    area.innerHTML =
-      '<div class="error-box fade-in">' +
-        '❌ 查無員編「' + escHtml(empId) + '」<br>' +
-        '<span style="font-size:0.9em;opacity:0.8">請確認輸入是否正確</span>' +
-      '</div>';
+    area.innerHTML = '<div class="error-box fade-in">❌ 查無員編「' + esc(empId) + '」，請確認後再試</div>';
   }
-}
-
-/* ══════════════════ QR CODE ══════════════════ */
-function initQR() {
-  var url = window.location.href;
-  if (url.startsWith('file://')) {
-    document.getElementById('local-note').style.display = 'block';
-    return;
-  }
-  document.getElementById('qr-wrap').style.display = 'block';
-  document.getElementById('qr-url').textContent = url;
-
-  new QRCode(document.getElementById('qrcode'), {
-    text: url,
-    width: 200,
-    height: 200,
-    colorDark: '#1e293b',
-    colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.M
-  });
 }
 
 function downloadQR() {
   var canvas = document.querySelector('#qrcode canvas');
   var img    = document.querySelector('#qrcode img');
   var src    = canvas ? canvas.toDataURL('image/png') : (img ? img.src : null);
-  if (!src) return alert('QR Code 尚未生成');
+  if (!src) { alert('QR Code 尚未生成'); return; }
   var a = document.createElement('a');
   a.href = src; a.download = '活動查詢QRCode.png';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-/* ══════════════════ UTIL ══════════════════ */
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 </body>
