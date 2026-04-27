@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理員後台 — 活動查詢系統</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #3730a3;
+      --success: #10b981;
+      --error: #ef4444;
+      --warn-bg: #fffbeb;
+      --warn-border: #fde68a;
+      --warn-text: #92400e;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --bg: #f1f5f9;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Microsoft JhengHei', 'PingFang TC', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 36px;
+      width: 100%;
+      max-width: 560px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+    }
+    .logo { text-align: center; margin-bottom: 28px; }
+    .logo h1 { font-size: 1.5em; color: var(--text); font-weight: 700; }
+    .logo p { color: var(--muted); font-size: 0.88em; margin-top: 4px; }
+
+    /* ── Form fields ── */
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block; font-size: 0.85em; color: var(--muted);
+      margin-bottom: 6px; font-weight: 600;
+    }
+    .field input[type="text"],
+    .field input[type="password"] {
+      width: 100%; padding: 11px 14px;
+      border: 2px solid var(--border); border-radius: 8px;
+      font-size: 0.95em; font-family: inherit; outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus { border-color: var(--primary); }
+
+    /* ── Buttons ── */
+    .btn {
+      width: 100%; padding: 13px; border: none;
+      border-radius: var(--radius); font-size: 1em;
+      font-weight: 700; cursor: pointer; font-family: inherit;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(79,70,229,0.35);
+    }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled) {
+      filter: brightness(0.92);
+      transform: translateY(-1px);
+    }
+    .btn-success:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent; border: 2px solid var(--border);
+      color: var(--muted); margin-top: 8px;
+    }
+    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-sm {
+      width: auto; padding: 8px 16px; font-size: 0.88em;
+      border-radius: 8px; border: none; cursor: pointer;
+      font-family: inherit; font-weight: 600;
+    }
+    .btn-sm-danger {
+      background: #fef2f2; color: var(--error);
+      border: 1px solid #fecaca;
+    }
+    .btn-sm-danger:hover { background: #fee2e2; }
+
+    /* ── Upload zone ── */
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: var(--radius);
+      padding: 28px 20px; text-align: center; cursor: pointer;
+      transition: all 0.2s; margin-bottom: 12px;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--primary); background: #f0f0ff;
+    }
+    .upload-zone .icon { font-size: 2em; margin-bottom: 6px; }
+    .upload-zone p { color: var(--muted); font-size: 0.88em; }
+    .upload-zone input[type="file"] { display: none; }
+
+    /* ── Preview table ── */
+    .table-wrap {
+      overflow-x: auto; margin-bottom: 16px;
+      border: 1px solid var(--border); border-radius: 8px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+    thead { background: #f8fafc; }
+    th, td {
+      padding: 9px 12px; text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th { font-weight: 700; color: var(--muted); white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #f8fafc; }
+
+    /* ── Divider ── */
+    .divider {
+      border: none; border-top: 1px solid var(--border); margin: 20px 0;
+    }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: 0.78em; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 12px;
+    }
+
+    /* ── Alert ── */
+    .alert {
+      border-radius: 8px; padding: 12px 14px;
+      font-size: 0.88em; margin-bottom: 14px; line-height: 1.5;
+    }
+    .alert-success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+    .alert-error   { background: #fef2f2; border: 1px solid #fecaca; color: var(--error); }
+    .alert-info    { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); }
+
+    /* ── Token section ── */
+    .token-row { display: flex; gap: 8px; }
+    .token-row input {
+      flex: 1; padding: 11px 14px; border: 2px solid var(--border);
+      border-radius: 8px; font-size: 0.9em; font-family: inherit; outline: none;
+      transition: border-color 0.2s;
+    }
+    .token-row input:focus { border-color: var(--primary); }
+    .token-row .btn { width: auto; padding: 11px 18px; }
+
+    /* ── Collapsible ── */
+    details { margin-top: 16px; }
+    summary {
+      cursor: pointer; font-size: 0.85em; color: var(--muted);
+      font-weight: 600; padding: 6px 0;
+      list-style: none; display: flex; align-items: center; gap: 6px;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::before { content: '▶'; font-size: 0.7em; transition: transform 0.2s; }
+    details[open] summary::before { transform: rotate(90deg); }
+    .details-body { padding-top: 14px; }
+
+    /* ── Status badge ── */
+    .status-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #f8fafc; border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;
+      font-size: 0.85em;
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      display: inline-block; margin-right: 6px;
+    }
+    .dot-green { background: var(--success); }
+    .dot-yellow { background: #f59e0b; }
+
+    /* ── Spinner ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite; vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    /* ── Screens ── */
+    #login-screen, #dashboard { display: none; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeUp 0.3s ease; }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <!-- ── LOGIN ── -->
+  <div id="login-screen">
+    <div class="logo">
+      <h1>🔐 管理員後台</h1>
+      <p>活動查詢系統 — 請輸入密碼登入</p>
+    </div>
+    <div class="field">
+      <label>管理員密碼</label>
+      <input type="password" id="pwd-input" placeholder="請輸入密碼"
+             onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div id="login-error" style="display:none" class="alert alert-error">
+      密碼錯誤，請重新輸入
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">登入</button>
+  </div>
+
+  <!-- ── DASHBOARD ── -->
+  <div id="dashboard">
+    <div class="logo">
+      <h1>⚙️ 管理員後台</h1>
+      <p id="dash-subtitle">目前資料：載入中…</p>
+    </div>
+
+    <!-- Activity name -->
+    <p class="section-title">活動名稱</p>
+    <div class="field">
+      <input type="text" id="act-name" placeholder="例：2025 年度員工旅遊">
+    </div>
+
+    <hr class="divider">
+
+    <!-- Excel upload -->
+    <p class="section-title">上傳員工資料（Excel）</p>
+    <div class="upload-zone" id="upload-zone"
+         onclick="document.getElementById('excel-input').click()">
+      <div class="icon">📊</div>
+      <p>點擊或拖放 .xlsx / .xls 檔案</p>
+      <input type="file" id="excel-input" accept=".xlsx,.xls">
+    </div>
+
+    <div id="preview-area" style="display:none">
+      <div id="preview-info" class="alert alert-success" style="margin-bottom:10px"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>姓名</th><th>員編</th>
+              <th>組別</th><th>房號</th><th>晚宴桌次</th>
+            </tr>
+          </thead>
+          <tbody id="preview-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Push to GitHub -->
+    <p class="section-title">推送更新到 GitHub</p>
+    <div id="token-saved-msg" class="alert alert-success" style="display:none;margin-bottom:10px">
+      ✅ Token 已儲存（本次瀏覽器工作階段有效）
+    </div>
+    <div class="token-row" id="token-row">
+      <input type="password" id="gh-token" placeholder="GitHub Personal Access Token">
+      <button class="btn btn-primary btn-sm" onclick="saveToken()">儲存</button>
+    </div>
+    <div class="alert alert-info" style="margin-top:10px;margin-bottom:14px;font-size:0.82em">
+      ℹ️ Token 需要 <strong>repo</strong> 權限。前往
+      <a href="https://github.com/settings/tokens/new?scopes=repo&description=activity-query-admin"
+         target="_blank" style="color:var(--primary)">GitHub → Settings → Tokens</a> 產生。
+      Token 僅存在本機瀏覽器工作階段，不會上傳。
+    </div>
+
+    <div id="push-msg" style="display:none" class="alert"></div>
+
+    <button class="btn btn-success" id="push-btn" onclick="pushToGitHub()">
+      🚀 推送更新到 GitHub
+    </button>
+
+    <hr class="divider">
+
+    <!-- Change password -->
+    <details>
+      <summary>變更管理員密碼</summary>
+      <div class="details-body">
+        <div class="field">
+          <label>目前密碼</label>
+          <input type="password" id="cur-pwd" placeholder="輸入目前密碼">
+        </div>
+        <div class="field">
+          <label>新密碼</label>
+          <input type="password" id="new-pwd" placeholder="輸入新密碼（至少 4 字元）">
+        </div>
+        <div class="field">
+          <label>確認新密碼</label>
+          <input type="password" id="new-pwd2" placeholder="再次輸入新密碼">
+        </div>
+        <div id="pwd-msg" style="display:none" class="alert"></div>
+        <button class="btn btn-primary" onclick="changePassword()">儲存新密碼</button>
+      </div>
+    </details>
+
+    <hr class="divider">
+    <button class="btn btn-ghost" onclick="logout()" style="margin-top:0">登出</button>
+  </div>
+
+</div>
+
+<script>
+/* ══════════ CONFIG ══════════ */
+var REPO_OWNER = 'yiheng-source';
+var REPO_NAME  = 'activity-query';
+var FILE_PATH  = 'index.html';
+var DEFAULT_PWD_HASH = '4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a'; // SHA-256 of "1"
+
+/* ══════════ STATE ══════════ */
+var currentData  = [];
+var currentTitle = '';
+var sessionKey   = 'aq_session';
+var pwdHashKey   = 'aq_pwd_hash';
+var tokenKey     = 'aq_token';
+
+/* ══════════ INIT ══════════ */
+window.addEventListener('DOMContentLoaded', function () {
+  if (sessionStorage.getItem(sessionKey) === 'ok') {
+    showDashboard();
+  } else {
+    document.getElementById('login-screen').style.display = 'block';
+    document.getElementById('pwd-input').focus();
+  }
+  setupDragDrop();
+});
+
+/* ══════════ CRYPTO ══════════ */
+async function sha256(str) {
+  var buf  = new TextEncoder().encode(str);
+  var hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+}
+
+/* ══════════ LOGIN ══════════ */
+async function doLogin() {
+  var pwd   = document.getElementById('pwd-input').value;
+  var hash  = await sha256(pwd);
+  var saved = localStorage.getItem(pwdHashKey) || DEFAULT_PWD_HASH;
+  if (hash === saved) {
+    document.getElementById('login-error').style.display = 'none';
+    sessionStorage.setItem(sessionKey, 'ok');
+    showDashboard();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('pwd-input').select();
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem(sessionKey);
+  location.reload();
+}
+
+/* ══════════ DASHBOARD ══════════ */
+async function showDashboard() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display    = 'block';
+
+  // Restore token if saved
+  var tk = sessionStorage.getItem(tokenKey);
+  if (tk) {
+    document.getElementById('gh-token').value = tk;
+    document.getElementById('token-saved-msg').style.display = 'block';
+    document.getElementById('token-row').style.display = 'none';
+  }
+
+  // Load current data from GitHub
+  await loadCurrentData();
+}
+
+async function loadCurrentData() {
+  try {
+    var url = 'https://api.github.com/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + FILE_PATH;
+    var tk  = sessionStorage.getItem(tokenKey) || document.getElementById('gh-token').value.trim();
+    var headers = { 'Accept': 'application/vnd.github+json' };
+    if (tk) headers['Authorization'] = 'Bearer ' + tk;
+
+    var res  = await fetch(url, { headers: headers });
+    var json = await res.json();
+    var html = decodeBase64(json.content.replace(/\n/g, ''));
+
+    // Extract title
+    var titleMatch = html.match(/<title>([^<—]+)/);
+    var t = titleMatch ? titleMatch[1].trim() : '';
+    document.getElementById('act-name').value = t;
+    currentTitle = t;
+
+    // Extract employee count
+    var dataMatch = html.match(/var EMPLOYEE_DATA\s*=\s*(\[[^\]]*\])/);
+    if (dataMatch) {
+      try {
+        currentData = JSON.parse(dataMatch[1]);
+        document.getElementById('dash-subtitle').textContent =
+          '目前資料：' + currentTitle + '（共 ' + currentData.length + ' 筆員工）';
+      } catch(e) {
+        document.getElementById('dash-subtitle').textContent = '目前資料：讀取成功';
+      }
+    }
+  } catch(e) {
+    document.getElementById('dash-subtitle').textContent = '（無法載入目前資料，需先儲存 Token）';
+  }
+}
+
+/* ══════════ UPLOAD ══════════ */
+function setupDragDrop() {
+  var zone  = document.getElementById('upload-zone');
+  var input = document.getElementById('excel-input');
+  zone.addEventListener('dragover', function(e){ e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', function(){ zone.classList.remove('drag-over'); });
+  zone.addEventListener('drop', function(e){
+    e.preventDefault(); zone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  input.addEventListener('change', function(){ if (this.files[0]) handleFile(this.files[0]); });
+}
+
+var COL_ALIASES = {
+  name:  ['姓名','name','名字'],
+  empId: ['員編','員工編號','工號','emp_id','empid','employee_id'],
+  group: ['組別','組','小組','group','隊別'],
+  room:  ['房號','房間','房間號','room','住房'],
+  table: ['晚宴桌次','桌次','桌號','table','dinner_table']
+};
+
+function detectCol(headers, key) {
+  var lower = headers.map(function(h){ return String(h).toLowerCase().trim(); });
+  var aliases = COL_ALIASES[key];
+  for (var i = 0; i < aliases.length; i++) {
+    var idx = lower.indexOf(aliases[i].toLowerCase());
+    if (idx >= 0) return headers[idx];
+  }
+  return null;
+}
+
+function handleFile(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var wb   = XLSX.read(e.target.result, { type: 'array', raw: false, defval: '' });
+      var ws   = wb.Sheets[wb.SheetNames[0]];
+      var json = XLSX.utils.sheet_to_json(ws, { raw: false, defval: '' });
+      if (!json || json.length === 0) { alert('Excel 沒有資料'); return; }
+
+      var headers = Object.keys(json[0]);
+      var mapped  = {};
+      var missing = [];
+      for (var k in COL_ALIASES) {
+        var col = detectCol(headers, k);
+        if (col) mapped[k] = col;
+        else missing.push(k);
+      }
+      if (missing.length > 0) {
+        alert('找不到欄位：' + missing.join('、') + '\n請確認 Excel 第一列有這些標題');
+        return;
+      }
+
+      currentData = json.map(function(row) {
+        return {
+          name:  String(row[mapped.name]  || '').trim(),
+          empId: String(row[mapped.empId] || '').trim(),
+          group: String(row[mapped.group] || '').trim(),
+          room:  String(row[mapped.room]  || '').trim(),
+          table: String(row[mapped.table] || '').trim()
+        };
+      }).filter(function(r){ return r.empId !== ''; });
+
+      renderPreview();
+    } catch(err) {
+      alert('讀取失敗：' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderPreview() {
+  document.getElementById('preview-area').style.display = 'block';
+  document.getElementById('preview-info').textContent =
+    '✅ 已讀取 ' + currentData.length + ' 筆資料，請確認後推送更新';
+
+  var tbody = document.getElementById('preview-body');
+  tbody.innerHTML = currentData.slice(0, 50).map(function(r, i) {
+    return '<tr><td>' + (i+1) + '</td><td>' + esc(r.name) + '</td><td>' +
+           esc(r.empId) + '</td><td>' + esc(r.group) + '</td><td>' +
+           esc(r.room) + '</td><td>' + esc(r.table) + '</td></tr>';
+  }).join('');
+  if (currentData.length > 50) {
+    tbody.innerHTML += '<tr><td colspan="6" style="color:var(--muted);text-align:center">' +
+      '…以及其他 ' + (currentData.length - 50) + ' 筆（僅顯示前 50 筆）</td></tr>';
+  }
+}
+
+/* ══════════ TOKEN ══════════ */
+function saveToken() {
+  var tk = document.getElementById('gh-token').value.trim();
+  if (!tk) { alert('請輸入 GitHub Token'); return; }
+  sessionStorage.setItem(tokenKey, tk);
+  document.getElementById('token-saved-msg').style.display = 'block';
+  document.getElementById('token-row').style.display = 'none';
+  loadCurrentData();
+}
+
+/* ══════════ PUSH TO GITHUB ══════════ */
+async function pushToGitHub() {
+  var token = sessionStorage.getItem(tokenKey) || document.getElementById('gh-token').value.trim();
+  if (!token) {
+    showMsg('push-msg', 'error', '請先輸入並儲存 GitHub Token');
+    return;
+  }
+  if (currentData.length === 0) {
+    showMsg('push-msg', 'error', '請先上傳 Excel 員工資料');
+    return;
+  }
+
+  var actName = document.getElementById('act-name').value.trim() || '員工活動';
+  var btn     = document.getElementById('push-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>推送中…';
+
+  try {
+    var apiUrl  = 'https://api.github.com/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + FILE_PATH;
+    var headers = {
+      'Authorization': 'Bearer ' + token,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json'
+    };
+
+    // Get current SHA
+    var getRes  = await fetch(apiUrl, { headers: headers });
+    if (!getRes.ok) {
+      var err = await getRes.json();
+      throw new Error(err.message || '無法取得檔案（Token 權限不足？）');
+    }
+    var getJson = await getRes.json();
+    var fileSha = getJson.sha;
+
+    // Build new index.html content
+    var newHtml = buildIndexHTML(actName, currentData);
+    var encoded = b64encode(newHtml);
+
+    // Push
+    var putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: headers,
+      body: JSON.stringify({
+        message: '更新活動資料：' + actName + '（共 ' + currentData.length + ' 筆）',
+        content: encoded,
+        sha: fileSha
+      })
+    });
+
+    if (putRes.ok) {
+      showMsg('push-msg', 'success',
+        '✅ 推送成功！約 1 分鐘後頁面更新。\n查詢頁面：https://' + REPO_OWNER + '.github.io/' + REPO_NAME + '/');
+      document.getElementById('dash-subtitle').textContent =
+        '目前資料：' + actName + '（共 ' + currentData.length + ' 筆員工）';
+    } else {
+      var perr = await putRes.json();
+      throw new Error(perr.message || '推送失敗');
+    }
+  } catch(e) {
+    showMsg('push-msg', 'error', '❌ ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🚀 推送更新到 GitHub';
+  }
+}
+
+/* ══════════ BUILD index.html ══════════ */
+function buildIndexHTML(title, data) {
+  var dataJson = JSON.stringify(data, null, 2);
+  return '<!DOCTYPE html>\n' +
+'<html lang="zh-TW">\n' +
+'<head>\n' +
+'  <meta charset="UTF-8">\n' +
+'  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+'  <title>' + escHtmlAttr(title) + ' — 查詢系統</title>\n' +
+'  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>\n' +
+'  <style>\n' +
+'    :root{\n' +
+'      --primary:#4f46e5;--primary-dark:#3730a3;\n' +
+'      --success:#10b981;--error:#ef4444;\n' +
+'      --text:#1e293b;--muted:#64748b;--border:#e2e8f0;--radius:12px;\n' +
+'    }\n' +
+'    *{box-sizing:border-box;margin:0;padding:0;}\n' +
+'    body{\n' +
+'      font-family:"Microsoft JhengHei","PingFang TC",Arial,sans-serif;\n' +
+'      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);\n' +
+'      min-height:100vh;display:flex;align-items:center;\n' +
+'      justify-content:center;padding:16px;\n' +
+'    }\n' +
+'    .card{\n' +
+'      background:#fff;border-radius:20px;padding:36px;\n' +
+'      width:100%;max-width:460px;\n' +
+'      box-shadow:0 25px 50px rgba(0,0,0,0.25);\n' +
+'    }\n' +
+'    .logo{text-align:center;margin-bottom:28px;}\n' +
+'    .logo h1{font-size:1.6em;color:var(--text);font-weight:700;}\n' +
+'    .logo p{color:var(--muted);font-size:0.9em;margin-top:4px;}\n' +
+'    .search-row{display:flex;gap:8px;margin-bottom:18px;}\n' +
+'    .search-row input{\n' +
+'      flex:1;padding:13px 16px;border:2px solid var(--border);\n' +
+'      border-radius:var(--radius);font-size:1em;font-family:inherit;\n' +
+'      outline:none;transition:border-color 0.2s;\n' +
+'    }\n' +
+'    .search-row input:focus{border-color:var(--primary);}\n' +
+'    .btn{\n' +
+'      padding:13px 22px;border:none;border-radius:var(--radius);\n' +
+'      font-size:1em;font-weight:700;cursor:pointer;\n' +
+'      font-family:inherit;transition:all 0.2s;\n' +
+'    }\n' +
+'    .btn-primary{background:var(--primary);color:#fff;}\n' +
+'    .btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px);}\n' +
+'    .btn-ghost{\n' +
+'      width:100%;background:transparent;border:2px solid var(--border);\n' +
+'      color:var(--muted);margin-top:8px;\n' +
+'    }\n' +
+'    .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}\n' +
+'    .result-card{\n' +
+'      background:linear-gradient(135deg,#f0f9ff,#e0f2fe);\n' +
+'      border:1px solid #bae6fd;border-radius:var(--radius);\n' +
+'      padding:20px;margin-bottom:20px;\n' +
+'    }\n' +
+'    .result-header{\n' +
+'      display:flex;align-items:center;gap:10px;\n' +
+'      margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #bae6fd;\n' +
+'    }\n' +
+'    .result-name{font-size:1.2em;font-weight:700;color:var(--text);}\n' +
+'    .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}\n' +
+'    .result-item{background:#fff;border-radius:8px;padding:12px;text-align:center;}\n' +
+'    .result-item .lbl{font-size:0.75em;color:var(--muted);margin-bottom:4px;}\n' +
+'    .result-item .val{font-size:1.05em;font-weight:700;color:var(--primary);}\n' +
+'    .error-box{\n' +
+'      background:#fef2f2;border:1px solid #fecaca;\n' +
+'      border-radius:var(--radius);padding:16px;\n' +
+'      text-align:center;color:var(--error);margin-bottom:20px;\n' +
+'    }\n' +
+'    .qr-wrap{\n' +
+'      border-top:1px solid var(--border);padding-top:22px;\n' +
+'      margin-top:6px;text-align:center;\n' +
+'    }\n' +
+'    .qr-wrap h3{\n' +
+'      font-size:0.8em;color:var(--muted);text-transform:uppercase;\n' +
+'      letter-spacing:0.07em;margin-bottom:14px;font-weight:700;\n' +
+'    }\n' +
+'    #qrcode{\n' +
+'      display:inline-block;padding:12px;background:#fff;\n' +
+'      border:1px solid var(--border);border-radius:10px;margin-bottom:10px;\n' +
+'    }\n' +
+'    #qrcode canvas,#qrcode img{display:block;}\n' +
+'    .qr-url{font-size:0.72em;color:var(--muted);word-break:break-all;margin-bottom:12px;}\n' +
+'    @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}\n' +
+'    .fade-in{animation:fadeUp 0.3s ease;}\n' +
+'  </style>\n' +
+'</head>\n' +
+'<body>\n' +
+'<div class="card">\n' +
+'  <div class="logo">\n' +
+'    <h1>🎉 ' + escHtmlAttr(title) + '</h1>\n' +
+'    <p>員工活動資訊查詢</p>\n' +
+'  </div>\n' +
+'  <div class="search-row">\n' +
+'    <input type="text" id="emp-input" placeholder="請輸入員編"\n' +
+'           onkeydown="if(event.key===\'Enter\')doSearch()"\n' +
+'           autocomplete="off" inputmode="text">\n' +
+'    <button class="btn btn-primary" onclick="doSearch()">查詢</button>\n' +
+'  </div>\n' +
+'  <div id="result-area"></div>\n' +
+'  <div class="qr-wrap">\n' +
+'    <h3>揃描 QR Code 開啟此查詢頁面</h3>\n' +
+'    <div id="qrcode"></div>\n' +
+'    <p class="qr-url" id="qr-url-text"></p>\n' +
+'    <button class="btn btn-ghost" onclick="downloadQR()">⬇️ 下載 QR Code 圖片</button>\n' +
+'  </div>\n' +
+'</div>\n' +
+'<script>\n' +
+'var EMPLOYEE_DATA = ' + dataJson + ';\n' +
+'window.addEventListener("DOMContentLoaded",function(){\n' +
+'  var url=window.location.href;\n' +
+'  document.getElementById("qr-url-text").textContent=url;\n' +
+'  new QRCode(document.getElementById("qrcode"),{\n' +
+'    text:url,width:180,height:180,\n' +
+'    colorDark:"#1e293b",colorLight:"#ffffff",\n' +
+'    correctLevel:QRCode.CorrectLevel.M\n' +
+'  });\n' +
+'});\n' +
+'function doSearch(){\n' +
+'  var empId=document.getElementById("emp-input").value.trim();\n' +
+'  var area=document.getElementById("result-area");\n' +
+'  if(!empId){area.innerHTML=\'<div class="error-box fade-in">請輸入員編後再查詢</div>\';return;}\n' +
+'  var found=null;\n' +
+'  for(var i=0;i<EMPLOYEE_DATA.length;i++){if(EMPLOYEE_DATA[i].empId===empId){found=EMPLOYEE_DATA[i];break;}}\n' +
+'  if(found){\n' +
+'    area.innerHTML=\'<div class="result-card fade-in"><div class="result-header"><span style="font-size:1.6em">✅</span><span class="result-name">\'+esc(found.name)+\'</span></div>\'+\n' +
+'    \'<div class="result-grid">\'+\n' +
+'    \'<div class="result-item"><div class="lbl">員編</div><div class="val">\'+esc(found.empId)+\'</div></div>\'+\n' +
+'    \'<div class="result-item"><div class="lbl">組別</div><div class="val">\'+esc(found.group)+\'</div></div>\'+\n' +
+'    \'<div class="result-item"><div class="lbl">房號</div><div class="val">\'+esc(found.room)+\'</div></div>\'+\n' +
+'    \'<div class="result-item"><div class="lbl">晚宴桌次</div><div class="val">\'+esc(found.table)+\'</div></div>\'+\n' +
+'    \'</div></div>\';\n' +
+'  }else{\n' +
+'    area.innerHTML=\'<div class="error-box fade-in">❌ 查無員編「\'+esc(empId)+\'」，請確認後再試</div>\';\n' +
+'  }\n' +
+'}\n' +
+'function downloadQR(){\n' +
+'  var canvas=document.querySelector("#qrcode canvas");\n' +
+'  var img=document.querySelector("#qrcode img");\n' +
+'  var src=canvas?canvas.toDataURL("image/png"):(img?img.src:null);\n' +
+'  if(!src){alert("QR Code 尚未生成");return;}\n' +
+'  var a=document.createElement("a");\n' +
+'  a.href=src;a.download="活動查詢QRCode.png";\n' +
+'  document.body.appendChild(a);a.click();document.body.removeChild(a);\n' +
+'}\n' +
+'function esc(s){\n' +
+'  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");\n' +
+'}\n' +
+'<\/script>\n' +
+'</body>\n' +
+'</html>';
+}
+
+/* ══════════ CHANGE PASSWORD ══════════ */
+async function changePassword() {
+  var cur   = document.getElementById('cur-pwd').value;
+  var newP  = document.getElementById('new-pwd').value;
+  var newP2 = document.getElementById('new-pwd2').value;
+
+  var curHash   = await sha256(cur);
+  var savedHash = localStorage.getItem(pwdHashKey) || DEFAULT_PWD_HASH;
+
+  if (curHash !== savedHash) {
+    showMsg('pwd-msg', 'error', '目前密碼錯誤');
+    return;
+  }
+  if (newP.length < 4) {
+    showMsg('pwd-msg', 'error', '新密碼至少需要 4 個字元');
+    return;
+  }
+  if (newP !== newP2) {
+    showMsg('pwd-msg', 'error', '兩次輸入的新密碼不一致');
+    return;
+  }
+
+  var newHash = await sha256(newP);
+  localStorage.setItem(pwdHashKey, newHash);
+  document.getElementById('cur-pwd').value  = '';
+  document.getElementById('new-pwd').value  = '';
+  document.getElementById('new-pwd2').value = '';
+  showMsg('pwd-msg', 'success', '✅ 密碼已更新');
+}
+
+/* ══════════ UTILS ══════════ */
+function showMsg(id, type, msg) {
+  var el = document.getElementById(id);
+  el.className = 'alert alert-' + type + ' fade-in';
+  el.textContent = msg;
+  el.style.display = 'block';
+  if (type === 'success') {
+    setTimeout(function(){ el.style.display = 'none'; }, 4000);
+  }
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escHtmlAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function b64encode(str) {
+  var bytes = new TextEncoder().encode(str);
+  var bin   = Array.from(bytes).map(function(b){ return String.fromCharCode(b); }).join('');
+  return btoa(bin);
+}
+
+function decodeBase64(b64) {
+  var bin = atob(b64);
+  var bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder('utf-8').decode(bytes);
+}
+</script>
+</body>
+</html>
