@@ -175,6 +175,10 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
   <button class="btn btn-p" id="uploadBtn">📁 上傳圖片</button>
   <input type="file" id="fileInput" accept="image/*" style="display:none">
   <div class="hdr-space"></div>
+  <button class="btn btn-s" id="tabPngBtn" disabled>🏷 Tab.PNG</button>
+  <button class="btn btn-s" id="saveStateBtn" disabled>💿 存檔</button>
+  <button class="btn btn-s" id="loadStateBtn">📂 讀取存檔</button>
+  <input type="file" id="loadStateInput" accept=".sticker" style="display:none">
   <button class="btn btn-g" id="exportAllBtn" disabled>💾 匯出全部 ZIP</button>
 </header>
 
@@ -339,6 +343,26 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
   <div class="load-txt" id="loadTxt">處理中...</div>
 </div>
 
+<!-- Tab PNG Modal -->
+<div class="modal-bg hide" id="tabModal">
+  <div class="modal" style="max-width:500px;height:auto;max-height:88vh">
+    <div class="modal-hdr">
+      <h2>🏷 製作 LINE Tab 圖示 (96×74 px)</h2>
+      <button class="btn btn-s" id="closeTabBtn">✕ 關閉</button>
+    </div>
+    <div style="padding:14px;overflow-y:auto;flex:1;min-height:0">
+      <p style="font-size:12px;color:#7777aa;margin-bottom:12px">勾選要製作為 Tab 圖示的貼圖（至少一張；複選將打包為 ZIP）</p>
+      <div id="tabGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"></div>
+    </div>
+    <div class="modal-ftr">
+      <span id="tabSelectCount" style="font-size:12px;color:#aaaacc;align-self:center">已選 0 張</span>
+      <div style="flex:1"></div>
+      <button class="btn btn-s" id="cancelTabBtn">取消</button>
+      <button class="btn btn-p" id="exportTabBtn" disabled>💾 匯出 Tab PNG</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.js"></script>
@@ -501,6 +525,8 @@ function loadImg(file) {
       origCanvas.style.margin = 'auto';
       $('applyCropBtn').disabled = false;
       $('exportAllBtn').disabled = false;
+      $('tabPngBtn').disabled = false;
+      $('saveStateBtn').disabled = false;
       renderOrig();
       extractTiles();
       setStatus(`已載入：${img.width}×${img.height}px`);
@@ -1335,6 +1361,137 @@ $('exportAllBtn').onclick=async()=>{
   const a=document.createElement('a'); a.download='stickers.zip'; a.href=url; a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
   hideLoad(); setStatus('已匯出全部貼圖');
+};
+
+// ── Tab PNG ────────────────────────────────────────────────────────────────
+$('tabPngBtn').onclick=()=>openTabModal();
+$('closeTabBtn').onclick=$('cancelTabBtn').onclick=()=>$('tabModal').classList.add('hide');
+$('exportTabBtn').onclick=()=>exportTabPng();
+
+function openTabModal(){
+  const grid=$('tabGrid'); grid.innerHTML='';
+  S.tiles.forEach((t,i)=>{
+    const wrap=document.createElement('label');
+    wrap.style.cssText='display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px;border-radius:6px;border:2px solid #2a2a4a;background:#1a1a2e;transition:.15s;position:relative';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.dataset.i=i;
+    cb.style.cssText='position:absolute;top:4px;right:4px;width:16px;height:16px;accent-color:#6666cc;cursor:pointer';
+    cb.onchange=()=>{ wrap.style.borderColor=cb.checked?'#6666cc':'#2a2a4a'; updateTabCount(); };
+    const cv=mkCanvas(t.editC.width,t.editC.height);
+    cv.getContext('2d').drawImage(t.editC,0,0);
+    cv.style.cssText='max-width:64px;max-height:64px;border-radius:3px;background:repeating-conic-gradient(#2a2a3a 0% 25%,#1a1a2a 0% 50%) 0 0/10px 10px';
+    const lbl=document.createElement('span'); lbl.textContent=`#${i+1}`;
+    lbl.style.cssText='font-size:10px;color:#7777aa';
+    wrap.append(cb,cv,lbl); grid.appendChild(wrap);
+  });
+  updateTabCount();
+  $('tabModal').classList.remove('hide');
+}
+
+function updateTabCount(){
+  const n=[...$('tabGrid').querySelectorAll('input[type=checkbox]:checked')].length;
+  $('tabSelectCount').textContent=`已選 ${n} 張`;
+  $('exportTabBtn').disabled=n===0;
+}
+
+async function exportTabPng(){
+  const checked=[...$('tabGrid').querySelectorAll('input[type=checkbox]:checked')];
+  const indices=checked.map(cb=>parseInt(cb.dataset.i));
+  if(!indices.length)return;
+  const TW=96,TH=74;
+  function makeTab(tile){
+    const c=mkCanvas(TW,TH); const ctx=c.getContext('2d');
+    const sw=tile.editC.width,sh=tile.editC.height;
+    const sc=Math.min(TW/sw,TH/sh);
+    const dw=Math.round(sw*sc),dh=Math.round(sh*sc);
+    ctx.drawImage(tile.editC,0,0,sw,sh,Math.round((TW-dw)/2),Math.round((TH-dh)/2),dw,dh);
+    return c;
+  }
+  if(indices.length===1){
+    const url=makeTab(S.tiles[indices[0]]).toDataURL('image/png');
+    const a=document.createElement('a'); a.download='tab.png'; a.href=url; a.click();
+  } else {
+    showLoad('打包 Tab PNG...');
+    const zip=new JSZip();
+    for(const i of indices){
+      zip.file(`tab_${String(i+1).padStart(2,'0')}.png`,makeTab(S.tiles[i]).toDataURL('image/png').split(',')[1],{base64:true});
+    }
+    const blob=await zip.generateAsync({type:'blob'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.download='tabs.zip'; a.href=url; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    hideLoad();
+  }
+  $('tabModal').classList.add('hide');
+  setStatus(`已匯出 ${indices.length} 張 Tab PNG (96×74px)`);
+}
+
+// ── Save State ─────────────────────────────────────────────────────────────
+$('saveStateBtn').onclick=async()=>{
+  if(!S.img||!S.tiles.length)return;
+  showLoad('存檔中...');
+  await new Promise(r=>setTimeout(r,30));
+  const origC=mkCanvas(S.img.width,S.img.height);
+  origC.getContext('2d').drawImage(S.img,0,0);
+  const data={
+    version:2,
+    gridH:S.gridH, gridV:S.gridV,
+    origImg:origC.toDataURL('image/jpeg',0.92),
+    tiles:S.tiles.map(t=>({
+      customCrop:t.customCrop||null,
+      editC:t.editC.toDataURL('image/png')
+    }))
+  };
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.download='sticker-project.sticker'; a.href=url; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  hideLoad(); setStatus('專案已存檔（sticker-project.sticker）');
+};
+
+// ── Load State ─────────────────────────────────────────────────────────────
+$('loadStateBtn').onclick=()=>$('loadStateInput').click();
+$('loadStateInput').onchange=async e=>{
+  const file=e.target.files[0]; $('loadStateInput').value='';
+  if(!file)return;
+  showLoad('讀取存檔中...');
+  try{
+    const data=JSON.parse(await file.text());
+    if(!data.version||!data.origImg||!data.tiles){throw new Error('格式不符');}
+    // 1. Load original image
+    await new Promise((ok,fail)=>{
+      const img=new Image();
+      img.onload=()=>{
+        S.img=img;
+        S.gridH=data.gridH||[.25,.5,.75];
+        S.gridV=data.gridV||[.25,.5,.75];
+        S.origZoom=1;
+        if($('origZoomVal'))$('origZoomVal').textContent='適合';
+        upzone.style.display='none';
+        origCanvas.style.display='block'; origCanvas.style.margin='auto';
+        $('applyCropBtn').disabled=false; $('exportAllBtn').disabled=false;
+        $('tabPngBtn').disabled=false; $('saveStateBtn').disabled=false;
+        renderOrig(); extractTiles(); ok();
+      };
+      img.onerror=fail; img.src=data.origImg;
+    });
+    // 2. Override each tile's editC + customCrop with saved data
+    await Promise.all(data.tiles.map((td,i)=>new Promise((ok,fail)=>{
+      const img=new Image();
+      img.onload=()=>{
+        const t=S.tiles[i]; if(!t){ok();return;}
+        if(td.customCrop) t.customCrop=td.customCrop;
+        t.editC.width=img.width; t.editC.height=img.height;
+        t.editC.getContext('2d').clearRect(0,0,img.width,img.height);
+        t.editC.getContext('2d').drawImage(img,0,0);
+        ok();
+      };
+      img.onerror=fail; img.src=td.editC;
+    })));
+    renderGrid();
+    hideLoad(); setStatus('存檔已讀取，繼續上次進度');
+  }catch(e){
+    hideLoad(); alert('讀取失敗：'+e.message);
+  }
 };
 
 // ── Utils ──────────────────────────────────────────────────────────────────
