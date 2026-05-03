@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>貼圖裁切 & 去背工具</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f1a;color:#e8e8f0;display:flex;flex-direction:column}
+
+/* Header */
+.hdr{background:#1a1a30;border-bottom:1px solid #2a2a4a;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.hdr h1{font-size:17px;font-weight:600;color:#9999ff;white-space:nowrap}
+.hdr-space{flex:1}
+
+/* Main */
+.main{display:flex;flex:1;overflow:hidden;min-height:0}
+
+/* Panels */
+.lpanel{width:360px;flex-shrink:0;border-right:1px solid #2a2a4a;display:flex;flex-direction:column;overflow:hidden}
+.rpanel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* Toolbar */
+.tb{padding:7px 12px;background:#16162a;border-bottom:1px solid #2a2a4a;display:flex;gap:7px;align-items:center;flex-wrap:wrap;flex-shrink:0}
+.tb-label{font-size:11px;color:#6666aa;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+
+/* Canvas wrap */
+.cvwrap{flex:1;overflow:auto;display:flex;padding:12px;background:#0a0a18;min-height:0}
+canvas{display:block}
+
+/* Upload zone */
+.upzone{display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed #3a3a6a;border-radius:12px;width:100%;height:100%;cursor:pointer;text-align:center;padding:20px;transition:all .2s}
+.upzone:hover,.upzone.over{border-color:#6666cc;background:#1a1a3a}
+.upzone .ico{font-size:44px;margin-bottom:10px}
+.upzone h3{font-size:15px;color:#aaaacc;margin-bottom:6px}
+.upzone p{font-size:12px;color:#666688}
+
+/* Tile grid */
+.tgrid{flex:1;overflow:hidden;padding:8px;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:5px;min-height:0}
+.tgrid-empty{grid-column:1/-1;text-align:center;padding:40px 20px;color:#4a4a7a;font-size:14px}
+.tile{background:#1a1a2e;border:2px solid #2a2a4a;border-radius:7px;cursor:pointer;transition:border-color .15s;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.tile:hover{border-color:#6666cc}
+.tile.sel{border-color:#8888ff}
+.tile-cv{flex:1;min-height:0;position:relative;background:repeating-conic-gradient(#2a2a3a 0% 25%,#1a1a2a 0% 50%) 0 0/14px 14px;overflow:hidden}
+.tile-cv canvas{position:absolute;max-width:100%;max-height:100%;top:50%;left:50%;transform:translate(-50%,-50%)}
+.tile-ft{flex-shrink:0;padding:3px 5px;display:flex;align-items:center;justify-content:space-between;gap:3px}
+.tile-num{font-size:11px;color:#7777aa}
+.tile-btns{display:flex;gap:3px}
+
+/* Buttons */
+.btn{padding:5px 12px;border-radius:5px;border:none;cursor:pointer;font-size:12px;font-family:inherit;transition:all .15s;white-space:nowrap}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-p{background:#5555cc;color:#fff}.btn-p:hover:not(:disabled){background:#6666dd}
+.btn-s{background:#2a2a4a;color:#ccccee}.btn-s:hover:not(:disabled){background:#3a3a5a}
+.btn-g{background:#2a6a2a;color:#fff}.btn-g:hover:not(:disabled){background:#3a8a3a}
+.btn-d{background:#6a2a2a;color:#fff}.btn-d:hover:not(:disabled){background:#8a3a3a}
+.iBtn{padding:4px 8px;background:#2a2a4a;color:#ccccee;border:none;border-radius:5px;cursor:pointer;font-size:12px;transition:all .15s}
+.iBtn:hover{background:#3a3a5a}
+.iBtn.on{background:#5555cc;color:#fff}
+
+/* Custom crop indicator */
+.tile.custom-crop{border-color:#ffcc44 !important}
+.custom-crop-badge{font-size:9px;background:#ffcc44;color:#111;border-radius:3px;padding:1px 4px;margin-left:3px;vertical-align:middle}
+
+/* Crop banner */
+.crop-banner{display:none;background:#14142e;border-bottom:2px solid #4466bb;padding:10px 12px;flex-shrink:0}
+.crop-banner.show{display:flex;flex-direction:column;gap:8px}
+.crop-banner-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.crop-hint{font-size:12px;color:#7799cc;line-height:1.5}
+.crop-prev-wrap{width:72px;height:72px;background:repeating-conic-gradient(#2a2a3a 0% 25%,#1a1a2a 0% 50%) 0 0/10px 10px;border-radius:5px;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #3a3a5a}
+.crop-prev-wrap canvas{max-width:72px;max-height:72px}
+
+/* Toggle */
+.tog-wrap{display:flex;align-items:center;gap:7px;font-size:13px}
+.tog{position:relative;width:34px;height:18px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0;position:absolute}
+.tog-s{position:absolute;inset:0;background:#3a3a5a;border-radius:9px;cursor:pointer;transition:.2s}
+.tog-s::before{content:'';position:absolute;width:12px;height:12px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.tog input:checked+.tog-s{background:#5555cc}
+.tog input:checked+.tog-s::before{transform:translateX(16px)}
+
+/* Range */
+.rng-wrap{display:flex;align-items:center;gap:6px;font-size:12px}
+.rng-wrap label{color:#8888aa;white-space:nowrap}
+input[type=range]{width:75px;accent-color:#6666cc}
+.rng-val{color:#aaaacc;min-width:22px;font-size:12px}
+
+/* Separator */
+.sep{width:1px;height:22px;background:#2a2a4a;flex-shrink:0}
+
+/* Status */
+.sbar{background:#13132a;border-top:1px solid #2a2a4a;padding:4px 14px;font-size:12px;color:#6666aa;flex-shrink:0}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:flex;align-items:center;justify-content:center}
+.modal-bg.hide{display:none}
+.modal{background:#1a1a2e;border:1px solid #3a3a5a;border-radius:10px;width:92vw;max-width:880px;height:86vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-hdr{padding:13px 18px;border-bottom:1px solid #2a2a4a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-hdr h2{font-size:15px;color:#aaaaff}
+.modal-body{flex:1;display:flex;gap:14px;padding:14px;overflow:hidden;min-height:0}
+.editor-area{flex:1;background:repeating-conic-gradient(#2a2a3a 0% 25%,#1a1a2a 0% 50%) 0 0/14px 14px;border-radius:7px;overflow:auto;min-width:0}
+#edInner{min-width:100%;min-height:100%;display:flex;align-items:center;justify-content:center;padding:8px;box-sizing:border-box;position:relative}
+#edCanvas{display:block;cursor:crosshair;flex-shrink:0}
+#selBox{position:absolute;border:2px dashed #88aaff;pointer-events:none;display:none}
+.editor-tools{width:170px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.tool-sec{display:flex;flex-direction:column;gap:5px}
+.tool-sec .sec-lbl{font-size:10px;color:#6666aa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.tool-btn{width:100%;padding:7px 10px;background:#2a2a4a;color:#ccccee;border:none;border-radius:5px;cursor:pointer;font-size:12px;text-align:left;transition:all .15s;font-family:inherit}
+.tool-btn:hover{background:#3a3a5a}
+.tool-btn.on{background:#5555cc;color:#fff}
+.hint{font-size:11px;color:#5a5a7a;line-height:1.6}
+.modal-ftr{padding:10px 18px;border-top:1px solid #2a2a4a;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+
+/* Loading */
+.loading{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.loading.hide{display:none}
+.spin{width:44px;height:44px;border:4px solid #3a3a5a;border-top-color:#7777cc;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-txt{color:#aaaacc;font-size:14px;text-align:center;max-width:280px}
+
+select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;padding:4px 8px;font-size:12px;font-family:inherit;cursor:pointer}
+
+/* Brush cursor overlay */
+#brushCursor{position:absolute;border-radius:50%;pointer-events:none;display:none;transform:translate(-50%,-50%);z-index:10}
+
+/* Animation modal */
+.anim-body{flex:1;display:flex;gap:14px;padding:14px;overflow:hidden;min-height:0}
+.anim-prev-area{width:176px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;align-items:center}
+.anim-prev-wrap{width:160px;height:160px;background:repeating-conic-gradient(#2a2a3a 0% 25%,#1a1a2a 0% 50%) 0 0/12px 12px;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid #3a3a5a}
+.anim-prev-wrap canvas{max-width:100%;max-height:100%;display:block}
+.anim-controls{flex:1;display:flex;flex-direction:column;gap:11px;overflow-y:auto;min-height:0}
+.anim-row{display:flex;flex-direction:column;gap:5px}
+.anim-lbl{font-size:10px;color:#6666aa;text-transform:uppercase;letter-spacing:.5px}
+.anim-presets{display:flex;flex-wrap:wrap;gap:5px}
+.anim-btn{padding:5px 11px;background:#2a2a4a;color:#ccccee;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-family:inherit;transition:all .15s}
+.anim-btn:hover{background:#3a3a5a}
+.anim-btn.on{background:#5555cc;color:#fff}
+
+/* Mobile */
+@media(max-width:700px){
+  html,body{height:auto;overflow-y:auto;overflow-x:hidden}
+  body{min-height:100vh}
+  .main{flex-direction:column;flex:none;height:auto;overflow:visible}
+  .lpanel{width:100% !important;border-right:none;border-bottom:1px solid #2a2a4a}
+  .cvwrap{height:55vw;min-height:160px;max-height:300px}
+  .rpanel{flex:none;min-height:60vw}
+  .hdr{flex-wrap:wrap;gap:6px;padding:8px 10px}
+  .tb{flex-wrap:wrap;gap:5px;padding:5px 8px}
+  .modal{width:98vw;height:95vh}
+  .modal-body{flex-direction:column;overflow-y:auto}
+  .editor-area{flex:none;height:50vw;min-height:150px}
+  .tgrid{grid-template-rows:auto;grid-template-columns:repeat(2,1fr);overflow-y:auto;align-content:start}
+  .tile{height:auto;flex:none}
+  .tile-cv{flex:none;height:44vw}
+  .editor-tools{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px;overflow-y:visible}
+  .tool-sec{flex:1;min-width:120px}
+  .crop-banner-top{flex-wrap:wrap}
+  .anim-body{flex-direction:column}
+  .anim-prev-area{width:100%;flex-direction:row;align-items:center;gap:12px}
+  .anim-prev-wrap{width:120px;height:120px;flex-shrink:0}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <h1>🎨 貼圖裁切 & 去背工具</h1>
+  <button class="btn btn-p" id="uploadBtn">📁 上傳圖片</button>
+  <input type="file" id="fileInput" accept="image/*" style="display:none">
+  <div class="hdr-space"></div>
+  <button class="btn btn-g" id="exportAllBtn" disabled>💾 匯出全部 ZIP</button>
+</header>
+
+<div class="main">
+  <!-- Left: original image + grid -->
+  <div class="lpanel">
+    <div class="tb">
+      <span class="tb-label">格線</span>
+      <button class="btn btn-s" id="gridAdjBtn">✏️ 調整格線</button>
+      <button class="btn btn-s" id="resetGridBtn">↩️ 重設</button>
+      <div class="sep"></div>
+      <button class="btn btn-s" id="applyCropBtn" disabled>✂️ 套用</button>
+      <div class="sep"></div>
+      <button class="iBtn" id="origZoomOut" title="縮小">－</button>
+      <span id="origZoomVal" style="font-size:11px;color:#aaaacc;min-width:38px;text-align:center">適合</span>
+      <button class="iBtn" id="origZoomIn" title="放大">＋</button>
+    </div>
+
+    <!-- Crop mode banner (hidden until user clicks ✂️ on a tile) -->
+    <div class="crop-banner" id="cropBanner">
+      <div class="crop-banner-top">
+        <span style="font-size:13px;color:#88aaff;font-weight:600" id="cropBannerTxt">設定貼圖 #1 的裁切範圍</span>
+        <div style="flex:1"></div>
+        <button class="btn btn-p" id="applyCropManualBtn" disabled>✔ 套用裁切</button>
+        <button class="btn btn-s" id="cancelCropManualBtn">✕ 取消</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="crop-prev-wrap"><canvas id="cropPrevCanvas"></canvas></div>
+        <span class="crop-hint">在左側原圖上<b style="color:#aabbff">拖曳</b>選取新的裁切範圍<br>放開滑鼠後點擊「✔ 套用裁切」</span>
+      </div>
+    </div>
+
+    <div class="cvwrap" id="origWrap">
+      <div class="upzone" id="upzone">
+        <div class="ico">🖼️</div>
+        <h3>拖曳圖片到此</h3>
+        <p>或點擊上方「上傳圖片」按鈕<br>請使用 4×4 格式的貼圖圖片</p>
+      </div>
+      <canvas id="origCanvas" style="display:none"></canvas>
+    </div>
+  </div>
+
+  <!-- Right: tile grid -->
+  <div class="rpanel">
+    <div class="tb">
+      <span class="tb-label">去背</span>
+      <label class="tog-wrap">
+        <span>啟用去背</span>
+        <label class="tog"><input type="checkbox" id="bgToggle"><span class="tog-s"></span></label>
+      </label>
+      <select id="bgMode">
+        <option value="ai">AI 去背（精準）</option>
+        <option value="simple">顏色去背（快速）</option>
+      </select>
+      <div class="rng-wrap" id="tolWrap" style="display:none">
+        <label>容差</label>
+        <input type="range" id="tolerance" min="5" max="120" value="35">
+        <span class="rng-val" id="tolVal">35</span>
+      </div>
+      <div class="sep"></div>
+      <button class="btn btn-s" id="bgAllBtn" disabled>套用去背到全部</button>
+    </div>
+    <div class="tgrid" id="tileGrid">
+      <div class="tgrid-empty">請先上傳圖片</div>
+    </div>
+  </div>
+</div>
+
+<div class="sbar" id="sbar">就緒 ｜ 請上傳 4×4 貼圖圖片</div>
+
+<!-- Tile Editor Modal -->
+<div class="modal-bg hide" id="edModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h2 id="edTitle">編輯貼圖</h2>
+      <button class="btn btn-s" id="closeEdBtn">✕ 關閉</button>
+    </div>
+    <div class="modal-body">
+      <div class="editor-area" id="edArea">
+        <div id="edInner">
+          <canvas id="edCanvas"></canvas>
+          <div id="selBox"></div>
+          <div id="brushCursor"></div>
+        </div>
+      </div>
+      <div class="editor-tools">
+        <div class="tool-sec">
+          <span class="sec-lbl">去背工具</span>
+          <button class="tool-btn" id="tWand">🪄 魔術棒（點擊去背）</button>
+          <button class="tool-btn" id="tSelect">□ 框選後去背</button>
+          <div class="rng-wrap" style="flex-wrap:wrap">
+            <label>容差</label>
+            <input type="range" id="edTol" min="5" max="120" value="35" style="width:65px">
+            <span class="rng-val" id="edTolVal">35</span>
+          </div>
+        </div>
+        <div class="tool-sec">
+          <span class="sec-lbl">筆刷工具</span>
+          <button class="tool-btn" id="tEraser">🧽 橡皮擦</button>
+          <button class="tool-btn" id="tRestore">🖌️ 還原筆</button>
+          <div class="rng-wrap" style="flex-wrap:wrap">
+            <label>大小</label>
+            <input type="range" id="bSize" min="2" max="60" value="14" style="width:65px">
+            <span class="rng-val" id="bSizeVal">14</span>
+          </div>
+        </div>
+        <div class="tool-sec">
+          <span class="sec-lbl">動作</span>
+          <button class="tool-btn" id="tAiBg">🤖 AI 去背（整張）</button>
+          <button class="tool-btn" id="tSimpleBg">🎨 顏色去背（整張）</button>
+          <button class="tool-btn" id="tReset">↩️ 重設此貼圖</button>
+        </div>
+        <div class="tool-sec">
+          <span class="sec-lbl">縮放</span>
+          <div style="display:flex;gap:4px;align-items:center">
+            <button class="tool-btn" id="edZoomOut" style="flex:1;text-align:center;padding:5px 2px">－</button>
+            <span id="edZoomVal" style="min-width:36px;text-align:center;font-size:12px;color:#aaaacc">100%</span>
+            <button class="tool-btn" id="edZoomIn" style="flex:1;text-align:center;padding:5px 2px">＋</button>
+          </div>
+          <button class="tool-btn" id="edZoomFit" style="text-align:center">⊙ 還原縮放</button>
+        </div>
+        <div class="tool-sec">
+          <span class="sec-lbl">提示</span>
+          <p class="hint">・Ctrl+Z 上一步 ／ Ctrl+Y 下一步<br>・魔術棒：點擊背景<br>・框選：拖曳選取區域後自動去背<br>・橡皮擦：拖曳清除<br>・還原筆：拖曳恢復原始</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-s" id="undoEdBtn" disabled title="Ctrl+Z">↩ 上一步</button>
+      <button class="btn btn-s" id="redoEdBtn" disabled title="Ctrl+Y">↪ 下一步</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-s" id="cancelEdBtn">取消</button>
+      <button class="btn btn-p" id="applyEdBtn">✔ 套用</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div class="loading hide" id="loading">
+  <div class="spin"></div>
+  <div class="load-txt" id="loadTxt">處理中...</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
+
+<!-- Animation Modal -->
+<div class="modal-bg hide" id="animModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-hdr">
+      <h2 id="animTitle">🎬 貼圖動畫</h2>
+      <button class="btn btn-s" id="closeAnimBtn">✕ 關閉</button>
+    </div>
+    <div class="anim-body">
+      <div class="anim-prev-area">
+        <div class="anim-prev-wrap"><canvas id="animPrevCanvas"></canvas></div>
+        <span style="font-size:11px;color:#6666aa;text-align:center">即時預覽</span>
+      </div>
+      <div class="anim-controls">
+        <div class="anim-row">
+          <span class="anim-lbl">動畫效果</span>
+          <div class="anim-presets" id="animPresets"></div>
+        </div>
+        <div class="anim-row">
+          <span class="anim-lbl">速度</span>
+          <div class="rng-wrap">
+            <label>慢</label>
+            <input type="range" id="animSpeed" min="0" max="7" step="1" value="5" style="width:90px">
+            <label>快</label>
+            <span class="rng-val" id="animSpeedVal">1×</span>
+          </div>
+        </div>
+        <div class="anim-row">
+          <span class="anim-lbl">強度</span>
+          <div class="rng-wrap">
+            <label>小</label>
+            <input type="range" id="animIntensity" min="0" max="7" step="1" value="5" style="width:90px">
+            <label>大</label>
+            <span class="rng-val" id="animIntensityVal">1×</span>
+          </div>
+        </div>
+        <div class="anim-row">
+          <label class="tog-wrap">
+            <span style="font-size:12px">透明背景（去背後效果最佳）</span>
+            <label class="tog"><input type="checkbox" id="animTransp" checked><span class="tog-s"></span></label>
+          </label>
+        </div>
+        <div class="anim-row" style="font-size:11px;color:#5a5a7a;line-height:1.6">
+          匯出格式：GIF・最大 320×320 px<br>適合 LINE / Telegram / Discord 動態貼圖
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-s" id="cancelAnimBtn">取消</button>
+      <button class="btn btn-g" id="exportAnimBtn">💾 匯出動畫 GIF</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// ── AI BG Removal ──────────────────────────────────────────────────────────
+let aiRemoveBg = null;
+try {
+  const m = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/bundle.browser.mjs');
+  aiRemoveBg = m.removeBackground;
+  console.log('[BG] AI 去背模組已載入');
+} catch(e) {
+  console.warn('[BG] AI 去背不可用，將使用顏色去背:', e.message);
+}
+
+// ── Zoom helpers ───────────────────────────────────────────────────────────
+const ZOOM_STEPS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
+function stepZoom(cur, dir) {
+  let i = ZOOM_STEPS.findIndex(z => Math.abs(z-cur) < 0.001);
+  if(i < 0) i = ZOOM_STEPS.findIndex(z => z > cur);
+  if(i < 0) i = ZOOM_STEPS.length - 1;
+  return ZOOM_STEPS[Math.max(0, Math.min(ZOOM_STEPS.length-1, i+dir))];
+}
+function zoomLabel(z){ return z===1 ? '適合' : Math.round(z*100)+'%'; }
+
+// ── State ──────────────────────────────────────────────────────────────────
+const S = {
+  img: null,
+  tiles: [],           // [{origC, editC, row, col}]
+  gridH: [.25,.5,.75], // normalized horiz dividers
+  gridV: [.25,.5,.75], // normalized vert  dividers
+  adjGrid: false,
+  dragLine: null,      // {type:'h'|'v', idx}
+  origZoom: 1,         // left panel zoom multiplier (1 = fit)
+  edZoom: 1,           // editor modal zoom multiplier (1 = fit)
+  edBaseSc: 1,         // editor base fit scale
+  // crop mode
+  cropMode: false,
+  cropTileIdx: null,
+  cropRect: null,      // {x,y,w,h} in image coords
+  cropDragging: false,
+  cropStart: null,
+  // editor
+  editIdx: null,
+  origForRestore: null, // tile.origC reference
+  edHistory: [],
+  edRedoStack: [],
+  tool: null,
+  drawing: false,
+  selStart: null,
+  selRect: null,
+  selecting: false,
+};
+
+// ── DOM ────────────────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const fileInput   = $('fileInput');
+const upzone      = $('upzone');
+const origCanvas  = $('origCanvas');
+const origCtx     = origCanvas.getContext('2d');
+const tileGrid    = $('tileGrid');
+const bgToggle    = $('bgToggle');
+const bgMode      = $('bgMode');
+const tolWrap     = $('tolWrap');
+const edModal     = $('edModal');
+const edCanvas    = $('edCanvas');
+const edCtx       = edCanvas.getContext('2d');
+const selBox      = $('selBox');
+const sbar        = $('sbar');
+const loading     = $('loading');
+const loadTxt     = $('loadTxt');
+
+// ── Upload ─────────────────────────────────────────────────────────────────
+$('uploadBtn').onclick = () => fileInput.click();
+fileInput.onchange = e => { if(e.target.files[0]) loadImg(e.target.files[0]); fileInput.value=''; };
+upzone.onclick = () => fileInput.click();
+
+const origWrap = $('origWrap');
+[upzone, origWrap].forEach(el => {
+  el.addEventListener('dragover', e => { e.preventDefault(); upzone.classList.add('over'); });
+  el.addEventListener('dragleave', () => upzone.classList.remove('over'));
+  el.addEventListener('drop', e => {
+    e.preventDefault(); upzone.classList.remove('over');
+    const f = e.dataTransfer.files[0];
+    if(f && f.type.startsWith('image/')) loadImg(f);
+  });
+});
+
+function loadImg(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      S.img = img;
+      S.gridH = [.25,.5,.75];
+      S.gridV = [.25,.5,.75];
+      S.origZoom = 1;
+      if($('origZoomVal')) $('origZoomVal').textContent = '適合';
+      upzone.style.display = 'none';
+      origCanvas.style.display = 'block';
+      origCanvas.style.margin = 'auto';
+      $('applyCropBtn').disabled = false;
+      $('exportAllBtn').disabled = false;
+      renderOrig();
+      extractTiles();
+      setStatus(`已載入：${img.width}×${img.height}px`);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Original Canvas ────────────────────────────────────────────────────────
+function renderOrig() {
+  if(!S.img) return;
+  const wrap = origWrap;
+  const mw = wrap.clientWidth - 24, mh = wrap.clientHeight - 24;
+  const baseSc = Math.min(mw/S.img.width, mh/S.img.height, 1);
+  const sc = baseSc * S.origZoom;
+  origCanvas.width  = S.img.width;
+  origCanvas.height = S.img.height;
+  origCanvas.style.width  = Math.round(S.img.width  * sc) + 'px';
+  origCanvas.style.height = Math.round(S.img.height * sc) + 'px';
+  drawGrid();
+}
+
+function drawGrid() {
+  if(!S.img) return;
+  const w = origCanvas.width, h = origCanvas.height;
+  origCtx.drawImage(S.img, 0, 0);
+
+  if(S.cropMode) {
+    // Dim entire image, then re-brighten relevant areas
+    origCtx.fillStyle = 'rgba(0,0,0,0.48)';
+    origCtx.fillRect(0, 0, w, h);
+    // Show current tile's existing bounds (bright, blue border)
+    const b = getTileBounds(S.cropTileIdx);
+    origCtx.drawImage(S.img, b.x, b.y, b.w, b.h, b.x, b.y, b.w, b.h);
+    origCtx.strokeStyle = 'rgba(100,160,255,0.85)';
+    origCtx.lineWidth = 2; origCtx.setLineDash([5,4]);
+    origCtx.strokeRect(b.x+1, b.y+1, b.w-2, b.h-2);
+    origCtx.setLineDash([]);
+    // Draw user's new selection (yellow, bright)
+    if(S.cropRect && S.cropRect.w > 3 && S.cropRect.h > 3) {
+      const r = S.cropRect;
+      origCtx.drawImage(S.img, r.x, r.y, r.w, r.h, r.x, r.y, r.w, r.h);
+      origCtx.strokeStyle = 'rgba(255,210,40,1)';
+      origCtx.lineWidth = 2; origCtx.setLineDash([6,3]);
+      origCtx.strokeRect(r.x+1, r.y+1, r.w-2, r.h-2);
+      origCtx.setLineDash([]);
+      // Corner handles
+      origCtx.fillStyle = '#ffd228';
+      [[r.x,r.y],[r.x+r.w,r.y],[r.x,r.y+r.h],[r.x+r.w,r.y+r.h]].forEach(([cx,cy])=>{
+        origCtx.fillRect(cx-4,cy-4,8,8);
+      });
+      // Size label
+      origCtx.fillStyle = 'rgba(0,0,0,0.65)';
+      origCtx.fillRect(r.x, r.y-18, 80, 16);
+      origCtx.fillStyle = '#ffd228';
+      origCtx.font = '11px monospace';
+      origCtx.fillText(`${r.w}×${r.h}`, r.x+4, r.y-5);
+    }
+    return;
+  }
+
+  // Normal mode: draw grid lines
+  origCtx.strokeStyle = 'rgba(120,160,255,0.85)';
+  origCtx.lineWidth = 2;
+  origCtx.setLineDash([7,4]);
+  for(const n of S.gridH) {
+    const y = n*h;
+    origCtx.beginPath(); origCtx.moveTo(0,y); origCtx.lineTo(w,y); origCtx.stroke();
+  }
+  for(const n of S.gridV) {
+    const x = n*w;
+    origCtx.beginPath(); origCtx.moveTo(x,0); origCtx.lineTo(x,h); origCtx.stroke();
+  }
+  origCtx.setLineDash([]);
+  if(S.adjGrid) {
+    origCtx.save();
+    origCtx.shadowColor='rgba(0,0,0,0.7)'; origCtx.shadowBlur=5;
+    for(const n of S.gridH) {
+      const y=n*h;
+      origCtx.fillStyle='rgba(255,255,255,0.95)'; origCtx.fillRect(w/2-26,y-9,52,18);
+      origCtx.shadowBlur=0;
+      origCtx.fillStyle='#3366ff'; origCtx.fillRect(w/2-22,y-7,44,14);
+      origCtx.fillStyle='#fff'; origCtx.font='bold 11px sans-serif';
+      origCtx.textAlign='center'; origCtx.textBaseline='middle';
+      origCtx.fillText('↕',w/2,y);
+      origCtx.shadowBlur=5;
+    }
+    for(const n of S.gridV) {
+      const x=n*w;
+      origCtx.fillStyle='rgba(255,255,255,0.95)'; origCtx.fillRect(x-9,h/2-26,18,52);
+      origCtx.shadowBlur=0;
+      origCtx.fillStyle='#3366ff'; origCtx.fillRect(x-7,h/2-22,14,44);
+      origCtx.fillStyle='#fff'; origCtx.font='bold 11px sans-serif';
+      origCtx.textAlign='center'; origCtx.textBaseline='middle';
+      origCtx.fillText('↔',x,h/2);
+      origCtx.shadowBlur=5;
+    }
+    origCtx.restore();
+  }
+}
+
+// ── Grid Adjustment ────────────────────────────────────────────────────────
+$('gridAdjBtn').onclick = () => {
+  S.adjGrid = !S.adjGrid;
+  $('gridAdjBtn').classList.toggle('on', S.adjGrid);
+  $('gridAdjBtn').textContent = S.adjGrid ? '✏️ 完成調整' : '✏️ 調整格線';
+  origCanvas.style.cursor = S.adjGrid ? 'crosshair' : 'default';
+  drawGrid();
+};
+$('resetGridBtn').onclick = () => {
+  S.tiles.forEach(t => { if(t) t.customCrop = null; });
+  S.gridH=[.25,.5,.75]; S.gridV=[.25,.5,.75];
+  drawGrid(); extractTiles();
+  setStatus('格線已重設，所有自訂裁切已清除');
+};
+
+// ── Crop Mode ──────────────────────────────────────────────────────────────
+function enterCropMode(i) {
+  // Exit grid adjust mode if active
+  if(S.adjGrid) {
+    S.adjGrid=false;
+    $('gridAdjBtn').classList.remove('on');
+    $('gridAdjBtn').textContent='✏️ 調整格線';
+  }
+  S.cropMode=true; S.cropTileIdx=i; S.cropRect=null; S.cropDragging=false;
+  $('cropBanner').classList.add('show');
+  $('cropBannerTxt').textContent=`設定貼圖 #${i+1} 的裁切範圍`;
+  $('applyCropManualBtn').disabled=true;
+  $('gridAdjBtn').disabled=true;
+  $('resetGridBtn').disabled=true;
+  $('applyCropBtn').disabled=true;
+  origCanvas.style.cursor='crosshair';
+  // Show current tile bounds in preview
+  const b=getTileBounds(i);
+  updateCropPreview(b);
+  drawGrid();
+  setStatus(`正在調整貼圖 #${i+1} 的裁切 ─ 在原圖上拖曳選取新範圍，放開後點套用`);
+}
+
+function exitCropMode() {
+  S.cropMode=false; S.cropTileIdx=null; S.cropRect=null; S.cropDragging=false;
+  $('cropBanner').classList.remove('show');
+  $('gridAdjBtn').disabled=false;
+  $('resetGridBtn').disabled=false;
+  $('applyCropBtn').disabled=false;
+  origCanvas.style.cursor='default';
+  drawGrid();
+}
+
+function applyCropManual() {
+  if(!S.cropRect || S.cropRect.w<5 || S.cropRect.h<5) return;
+  const i=S.cropTileIdx;
+  const r={...S.cropRect};
+  r.x=Math.max(0,r.x); r.y=Math.max(0,r.y);
+  r.w=Math.min(r.w, S.img.width-r.x);
+  r.h=Math.min(r.h, S.img.height-r.y);
+  if(r.w<5 || r.h<5) return;
+  const t=S.tiles[i];
+  t.customCrop=r;
+  const oc=mkCanvas(r.w,r.h); oc.getContext('2d').drawImage(S.img,r.x,r.y,r.w,r.h,0,0,r.w,r.h);
+  const ec=mkCanvas(r.w,r.h); ec.getContext('2d').drawImage(oc,0,0);
+  t.origC=oc; t.editC=ec;
+  refreshTilePreview(i);
+  // Add custom crop badge to tile card
+  const items=tileGrid.querySelectorAll('.tile');
+  if(items[i]){
+    items[i].classList.add('custom-crop');
+    const num=items[i].querySelector('.tile-num');
+    if(!num.querySelector('.custom-crop-badge')){
+      const badge=document.createElement('span'); badge.className='custom-crop-badge'; badge.textContent='自訂';
+      num.appendChild(badge);
+    }
+  }
+  exitCropMode();
+  setStatus(`貼圖 #${i+1} 裁切已更新（${r.w}×${r.h}px）`);
+}
+
+function updateCropPreview(bounds) {
+  const b=bounds||S.cropRect;
+  if(!b||b.w<2||b.h<2) return;
+  const pv=$('cropPrevCanvas');
+  const maxSz=68, sc=Math.min(maxSz/b.w, maxSz/b.h, 1);
+  pv.width=Math.round(b.w*sc); pv.height=Math.round(b.h*sc);
+  pv.getContext('2d').drawImage(S.img, b.x, b.y, b.w, b.h, 0, 0, pv.width, pv.height);
+}
+
+$('applyCropManualBtn').onclick = applyCropManual;
+$('cancelCropManualBtn').onclick = exitCropMode;
+$('applyCropBtn').onclick = () => { extractTiles(); setStatus('裁切已套用'); };
+
+function cvPos(e, cv) {
+  const r = cv.getBoundingClientRect();
+  return { x:(e.clientX-r.left)/r.width*cv.width, y:(e.clientY-r.top)/r.height*cv.height };
+}
+
+origCanvas.addEventListener('mousedown', e => {
+  if(S.cropMode) {
+    const {x,y} = cvPos(e, origCanvas);
+    S.cropDragging = true;
+    S.cropStart = {x:Math.round(x), y:Math.round(y)};
+    S.cropRect = {x:Math.round(x), y:Math.round(y), w:0, h:0};
+    $('applyCropManualBtn').disabled = true;
+    return;
+  }
+  if(!S.adjGrid) return;
+  const {x,y} = cvPos(e, origCanvas);
+  const w=origCanvas.width, h=origCanvas.height, SNAP=14;
+  for(let i=0;i<S.gridH.length;i++) {
+    if(Math.abs(y-S.gridH[i]*h)<SNAP) { S.dragLine={type:'h',idx:i}; return; }
+  }
+  for(let i=0;i<S.gridV.length;i++) {
+    if(Math.abs(x-S.gridV[i]*w)<SNAP) { S.dragLine={type:'v',idx:i}; return; }
+  }
+});
+origCanvas.addEventListener('mousemove', e => {
+  if(S.cropMode) {
+    origCanvas.style.cursor = 'crosshair';
+    if(S.cropDragging && S.cropStart) {
+      const {x,y} = cvPos(e, origCanvas);
+      const rx = Math.max(0, Math.min(Math.round(x), origCanvas.width));
+      const ry = Math.max(0, Math.min(Math.round(y), origCanvas.height));
+      S.cropRect = {
+        x: Math.min(rx, S.cropStart.x),
+        y: Math.min(ry, S.cropStart.y),
+        w: Math.abs(rx - S.cropStart.x),
+        h: Math.abs(ry - S.cropStart.y)
+      };
+      drawGrid();
+      updateCropPreview();
+    }
+    return;
+  }
+  if(!S.adjGrid) return;
+  if(S.dragLine) {
+    const {x,y}=cvPos(e,origCanvas), w=origCanvas.width, h=origCanvas.height;
+    if(S.dragLine.type==='h') S.gridH[S.dragLine.idx]=Math.max(.04,Math.min(.96,y/h));
+    else                       S.gridV[S.dragLine.idx]=Math.max(.04,Math.min(.96,x/w));
+    drawGrid();
+  } else {
+    const {x,y}=cvPos(e,origCanvas), w=origCanvas.width, h=origCanvas.height, SNAP=14;
+    let cur='crosshair';
+    for(const n of S.gridH) if(Math.abs(y-n*h)<SNAP){cur='ns-resize';break;}
+    if(cur==='crosshair') for(const n of S.gridV) if(Math.abs(x-n*w)<SNAP){cur='ew-resize';break;}
+    origCanvas.style.cursor=cur;
+  }
+});
+origCanvas.addEventListener('mouseup', () => {
+  if(S.cropMode && S.cropDragging) {
+    S.cropDragging = false;
+    if(S.cropRect && S.cropRect.w > 5 && S.cropRect.h > 5) {
+      $('applyCropManualBtn').disabled = false;
+    }
+    return;
+  }
+  if(S.dragLine){S.dragLine=null;extractTiles();}
+});
+origCanvas.addEventListener('mouseleave', () => {
+  if(S.cropMode) { S.cropDragging = false; return; }
+  if(S.dragLine){S.dragLine=null;extractTiles();}
+});
+
+// ── Tile Extraction ────────────────────────────────────────────────────────
+function extractTiles() {
+  if(!S.img) return;
+  // Preserve any custom crops from previous extraction
+  const oldCrops = S.tiles.map(t => t.customCrop || null);
+  const w=S.img.width, h=S.img.height;
+  const hs=[0,...S.gridH,1].map(n=>Math.round(n*h));
+  const vs=[0,...S.gridV,1].map(n=>Math.round(n*w));
+  S.tiles=[];
+  for(let r=0;r<4;r++) for(let c=0;c<4;c++) {
+    const i=r*4+c;
+    const cc = oldCrops[i] || null;
+    const tx = cc ? cc.x : vs[c];
+    const ty = cc ? cc.y : hs[r];
+    const tw = cc ? cc.w : vs[c+1]-vs[c];
+    const th = cc ? cc.h : hs[r+1]-hs[r];
+    const oc=mkCanvas(tw,th); oc.getContext('2d').drawImage(S.img,tx,ty,tw,th,0,0,tw,th);
+    const ec=mkCanvas(tw,th); ec.getContext('2d').drawImage(oc,0,0);
+    S.tiles.push({origC:oc,editC:ec,row:r,col:c,customCrop:cc});
+  }
+  renderGrid();
+}
+
+// Returns the tile's crop bounds in original image coordinates
+function getTileBounds(i) {
+  const t = S.tiles[i];
+  if(t.customCrop) return {...t.customCrop};
+  const w=S.img.width, h=S.img.height;
+  const hs=[0,...S.gridH,1].map(n=>Math.round(n*h));
+  const vs=[0,...S.gridV,1].map(n=>Math.round(n*w));
+  const r=Math.floor(i/4), c=i%4;
+  return {x:vs[c], y:hs[r], w:vs[c+1]-vs[c], h:hs[r+1]-hs[r]};
+}
+
+function mkCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+
+// ── Tile Grid ──────────────────────────────────────────────────────────────
+function renderGrid() {
+  tileGrid.innerHTML='';
+  S.tiles.forEach((t,i) => {
+    const wrap=document.createElement('div'); wrap.className='tile'; wrap.dataset.i=i;
+    const cvWrap=document.createElement('div'); cvWrap.className='tile-cv';
+    const tc=mkCanvas(t.editC.width,t.editC.height);
+    tc.getContext('2d').drawImage(t.editC,0,0);
+    cvWrap.appendChild(tc);
+    const ft=document.createElement('div'); ft.className='tile-ft';
+    const num=document.createElement('span'); num.className='tile-num'; num.textContent=`#${i+1}`;
+    const btns=document.createElement('div'); btns.className='tile-btns';
+    const eBtn=mkBtn('✏️','編輯去背',()=>{openEditor(i);});
+    const cBtn=mkBtn('✂️','手動裁切',()=>{enterCropMode(i);});
+    const aBtn=mkBtn('🎬','動畫 GIF',()=>{openAnimModal(i);});
+    const dBtn=mkBtn('💾','下載',()=>{dlTile(i);});
+    if(t.customCrop){
+      const badge=document.createElement('span'); badge.className='custom-crop-badge'; badge.textContent='自訂';
+      num.appendChild(badge);
+      wrap.classList.add('custom-crop');
+    }
+    btns.append(eBtn,cBtn,aBtn,dBtn); ft.append(num,btns);
+    wrap.append(cvWrap,ft);
+    wrap.addEventListener('click',()=>openEditor(i));
+    tileGrid.appendChild(wrap);
+  });
+}
+
+function mkBtn(txt,title,fn){
+  const b=document.createElement('button');b.className='iBtn';b.textContent=txt;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};return b;
+}
+
+function refreshTilePreview(i) {
+  const items=tileGrid.querySelectorAll('.tile');
+  if(!items[i]) return;
+  const tc=items[i].querySelector('canvas');
+  const t=S.tiles[i];
+  tc.width=t.editC.width; tc.height=t.editC.height;
+  const ctx=tc.getContext('2d');
+  ctx.clearRect(0,0,tc.width,tc.height);
+  ctx.drawImage(t.editC,0,0);
+}
+
+// ── BG Removal Controls ────────────────────────────────────────────────────
+bgToggle.onchange = () => {
+  const on=bgToggle.checked;
+  $('bgAllBtn').disabled=!on;
+  tolWrap.style.display=(on && bgMode.value==='simple')?'flex':'none';
+};
+bgMode.onchange = () => {
+  const on=bgToggle.checked;
+  tolWrap.style.display=(on && bgMode.value==='simple')?'flex':'none';
+};
+$('tolerance').oninput=()=>{ $('tolVal').textContent=$('tolerance').value; };
+
+$('bgAllBtn').onclick = async () => {
+  if(!bgToggle.checked||!S.tiles.length) return;
+  showLoad('正在去除背景...');
+  for(let i=0;i<S.tiles.length;i++) {
+    setLoadTxt(`處理中 ${i+1}/${S.tiles.length}...`);
+    await removeTileBg(i, bgMode.value, parseInt($('tolerance').value));
+  }
+  renderGrid();
+  hideLoad();
+  setStatus('所有貼圖去背完成');
+};
+
+async function removeTileBg(i, mode, tol) {
+  const t=S.tiles[i];
+  if(mode==='ai' && aiRemoveBg) {
+    try { await removeBgAI(t); return; } catch(e) { console.warn('AI失敗退回顏色去背',e); }
+  }
+  removeBgSimple(t.origC, t.editC, tol||35);
+}
+
+async function removeBgAI(tile) {
+  const blob=await new Promise(r=>tile.origC.toBlob(r,'image/png'));
+  const res=await aiRemoveBg(blob,{
+    publicPath:'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/',
+    debug:false
+  });
+  const url=URL.createObjectURL(res);
+  await new Promise((ok,fail)=>{
+    const img=new Image();
+    img.onload=()=>{
+      tile.editC.width=img.width; tile.editC.height=img.height;
+      const ctx=tile.editC.getContext('2d');
+      ctx.clearRect(0,0,img.width,img.height);
+      ctx.drawImage(img,0,0);
+      URL.revokeObjectURL(url); ok();
+    };
+    img.onerror=fail; img.src=url;
+  });
+}
+
+function removeBgSimple(src, dst, tol) {
+  dst.width=src.width; dst.height=src.height;
+  const sCtx=src.getContext('2d');
+  const imgD=sCtx.getImageData(0,0,src.width,src.height);
+  const d=imgD.data, w=src.width, h=src.height;
+  // avg corner colors
+  let br=0,bg=0,bb=0,cnt=0;
+  [[0,0],[w-1,0],[0,h-1],[w-1,h-1]].forEach(([cx,cy])=>{
+    const i=(cy*w+cx)*4;
+    if(d[i+3]>0){br+=d[i];bg+=d[i+1];bb+=d[i+2];cnt++;}
+  });
+  if(cnt){br/=cnt;bg/=cnt;bb/=cnt;}else{br=bg=bb=255;}
+  // flood fill from corners
+  const vis=new Uint8Array(w*h), mask=new Uint8Array(w*h);
+  const stk=[];
+  [[0,0],[w-1,0],[0,h-1],[w-1,h-1]].forEach(([cx,cy])=>{if(!vis[cy*w+cx])stk.push(cy*w+cx);});
+  while(stk.length){
+    const pos=stk.pop();
+    if(vis[pos])continue;
+    vis[pos]=1;
+    const di=pos*4, a=d[di+3];
+    if(a===0){mask[pos]=1;continue;}
+    const dist=Math.sqrt((d[di]-br)**2+(d[di+1]-bg)**2+(d[di+2]-bb)**2);
+    if(dist<=tol){
+      mask[pos]=1;
+      const px=pos%w, py=Math.floor(pos/w);
+      if(px>0)  stk.push(pos-1);
+      if(px<w-1)stk.push(pos+1);
+      if(py>0)  stk.push(pos-w);
+      if(py<h-1)stk.push(pos+w);
+    }
+  }
+  const res=sCtx.getImageData(0,0,w,h);
+  for(let i=0;i<w*h;i++) if(mask[i]) res.data[i*4+3]=0;
+  dst.getContext('2d').putImageData(res,0,0);
+}
+
+// ── Editor ─────────────────────────────────────────────────────────────────
+function openEditor(i) {
+  S.editIdx=i; S.edZoom=1;
+  const t=S.tiles[i];
+  edCanvas.width=t.editC.width; edCanvas.height=t.editC.height;
+  edCtx.clearRect(0,0,edCanvas.width,edCanvas.height);
+  edCtx.drawImage(t.editC,0,0);
+  S.origForRestore=t.origC;
+  S.edHistory=[snapEd()];
+  S.edRedoStack=[];
+  S.tool=null; clearToolBtns();
+  $('edTitle').textContent=`編輯貼圖 #${i+1}`;
+  selBox.style.display='none';
+  edModal.classList.remove('hide');
+  // modal must be visible before we can measure
+  requestAnimationFrame(() => {
+    const inner=$('edInner');
+    const aw=inner.clientWidth-20, ah=inner.clientHeight-20;
+    S.edBaseSc=Math.min(aw/edCanvas.width, ah/edCanvas.height, 1);
+    applyEdZoom();
+    updateUndoRedoBtns();
+  });
+}
+
+function applyEdZoom() {
+  const sc=S.edBaseSc*S.edZoom;
+  edCanvas.style.width=Math.round(edCanvas.width*sc)+'px';
+  edCanvas.style.height=Math.round(edCanvas.height*sc)+'px';
+  if($('edZoomVal')) $('edZoomVal').textContent=zoomLabel(S.edZoom);
+}
+
+$('closeEdBtn').onclick=$('cancelEdBtn').onclick=()=>{edModal.classList.add('hide');S.editIdx=null;};
+$('applyEdBtn').onclick=()=>{
+  if(S.editIdx===null)return;
+  const t=S.tiles[S.editIdx];
+  t.editC.width=edCanvas.width; t.editC.height=edCanvas.height;
+  t.editC.getContext('2d').clearRect(0,0,edCanvas.width,edCanvas.height);
+  t.editC.getContext('2d').drawImage(edCanvas,0,0);
+  refreshTilePreview(S.editIdx);
+  setStatus(`貼圖 #${S.editIdx+1} 已更新`);
+  edModal.classList.add('hide'); S.editIdx=null;
+};
+
+// Tool buttons
+const toolBtns={wand:$('tWand'),select:$('tSelect'),eraser:$('tEraser'),restore:$('tRestore')};
+function clearToolBtns(){Object.values(toolBtns).forEach(b=>b.classList.remove('on')); edCanvas.style.cursor='default';}
+function updateBrushCursor(e) {
+  const bc=$('brushCursor'); if(!bc) return;
+  if(S.tool!=='eraser'&&S.tool!=='restore'){bc.style.display='none';return;}
+  const ir=$('edInner').getBoundingClientRect(), r=edCanvas.getBoundingClientRect();
+  const sz=parseInt($('bSize').value)*(r.width/edCanvas.width)*2;
+  bc.style.display='block'; bc.style.width=sz+'px'; bc.style.height=sz+'px';
+  bc.style.left=(e.clientX-ir.left)+'px'; bc.style.top=(e.clientY-ir.top)+'px';
+  bc.style.border='2px solid '+(S.tool==='eraser'?'rgba(255,80,80,0.9)':'rgba(80,220,120,0.9)');
+  bc.style.boxShadow='0 0 0 1px rgba(0,0,0,0.6)';
+}
+function setTool(name){
+  S.tool=name; clearToolBtns();
+  if(name&&toolBtns[name]){toolBtns[name].classList.add('on');}
+  if(name==='wand')edCanvas.style.cursor='crosshair';
+  else if(name==='eraser'||name==='restore')edCanvas.style.cursor='none';
+  else if(name==='select')edCanvas.style.cursor='crosshair';
+  else edCanvas.style.cursor='default';
+  if(name!=='select'){selBox.style.display='none';S.selRect=null;}
+  if(name!=='eraser'&&name!=='restore'){const bc=$('brushCursor');if(bc)bc.style.display='none';}
+}
+
+$('tWand').onclick=()=>setTool(S.tool==='wand'?null:'wand');
+$('tSelect').onclick=()=>setTool(S.tool==='select'?null:'select');
+$('tEraser').onclick=()=>setTool(S.tool==='eraser'?null:'eraser');
+$('tRestore').onclick=()=>setTool(S.tool==='restore'?null:'restore');
+$('bSize').oninput=()=>$('bSizeVal').textContent=$('bSize').value;
+$('edTol').oninput=()=>$('edTolVal').textContent=$('edTol').value;
+
+$('tReset').onclick=()=>{
+  if(S.editIdx===null)return;
+  edCtx.clearRect(0,0,edCanvas.width,edCanvas.height);
+  edCtx.drawImage(S.origForRestore,0,0);
+  saveEdHistory();
+};
+
+$('tAiBg').onclick=async()=>{
+  if(S.editIdx===null)return;
+  showLoad('AI 去背中...');
+  const tmpT={origC:snapshotCanvas(edCanvas),editC:mkCanvas(edCanvas.width,edCanvas.height)};
+  try{
+    if(aiRemoveBg) await removeBgAI(tmpT);
+    else { removeBgSimple(tmpT.origC,tmpT.editC,parseInt($('edTol').value)); }
+    edCtx.clearRect(0,0,edCanvas.width,edCanvas.height);
+    edCtx.drawImage(tmpT.editC,0,0);
+    saveEdHistory();
+  }catch(e){ alert('去背失敗: '+e.message); }
+  hideLoad();
+};
+
+$('tSimpleBg').onclick=()=>{
+  if(S.editIdx===null)return;
+  showLoad('顏色去背中...');
+  setTimeout(()=>{
+    const tmp=mkCanvas(edCanvas.width,edCanvas.height);
+    tmp.getContext('2d').drawImage(edCanvas,0,0);
+    const dst=mkCanvas(edCanvas.width,edCanvas.height);
+    removeBgSimple(tmp,dst,parseInt($('edTol').value));
+    edCtx.clearRect(0,0,edCanvas.width,edCanvas.height);
+    edCtx.drawImage(dst,0,0);
+    saveEdHistory();
+    hideLoad();
+  },30);
+};
+
+// ── Editor Canvas Events ───────────────────────────────────────────────────
+function edPos(e){
+  const r=edCanvas.getBoundingClientRect();
+  return{x:Math.round((e.clientX-r.left)/r.width*edCanvas.width),y:Math.round((e.clientY-r.top)/r.height*edCanvas.height)};
+}
+
+edCanvas.addEventListener('mousedown',e=>{
+  const {x,y}=edPos(e);
+  if(S.tool==='wand'){
+    magicWand(x,y,parseInt($('edTol').value));
+    saveEdHistory();
+  } else if(S.tool==='eraser'||S.tool==='restore'){
+    S.drawing=true; paintBrush(x,y);
+  } else if(S.tool==='select'){
+    S.selecting=true; S.selStart={x,y};
+    S.selRect={x,y,w:0,h:0};
+    selBox.style.display='none';
+  }
+});
+edCanvas.addEventListener('mousemove',e=>{
+  updateBrushCursor(e);
+  const {x,y}=edPos(e);
+  if(S.drawing && (S.tool==='eraser'||S.tool==='restore')) paintBrush(x,y);
+  if(S.selecting && S.tool==='select') {
+    const rx=Math.min(x,S.selStart.x), ry=Math.min(y,S.selStart.y);
+    S.selRect={x:rx,y:ry,w:Math.abs(x-S.selStart.x),h:Math.abs(y-S.selStart.y)};
+    updateSelBox();
+  }
+});
+edCanvas.addEventListener('mouseup',e=>{
+  if(S.drawing){saveEdHistory();S.drawing=false;}
+  if(S.selecting){
+    S.selecting=false;
+    const {x,y}=edPos(e);
+    if(S.selRect && S.selRect.w>4 && S.selRect.h>4){
+      magicWandInRect(S.selRect,parseInt($('edTol').value));
+      saveEdHistory();
+      selBox.style.display='none'; S.selRect=null;
+    }
+  }
+});
+edCanvas.addEventListener('mouseleave',()=>{
+  $('brushCursor').style.display='none';
+  if(S.drawing){saveEdHistory();S.drawing=false;}
+  if(S.selecting){S.selecting=false;}
+});
+
+function updateSelBox() {
+  if(!S.selRect) return;
+  const r=edCanvas.getBoundingClientRect();
+  const scX=r.width/edCanvas.width, scY=r.height/edCanvas.height;
+  const ir=$('edInner').getBoundingClientRect();
+  selBox.style.display='block';
+  selBox.style.left=(r.left-ir.left+S.selRect.x*scX)+'px';
+  selBox.style.top =(r.top -ir.top +S.selRect.y*scY)+'px';
+  selBox.style.width =S.selRect.w*scX+'px';
+  selBox.style.height=S.selRect.h*scY+'px';
+}
+
+// ── Magic Wand ─────────────────────────────────────────────────────────────
+function magicWand(sx,sy,tol){
+  const imgD=edCtx.getImageData(0,0,edCanvas.width,edCanvas.height);
+  const d=imgD.data, w=edCanvas.width, h=edCanvas.height;
+  const si=(sy*w+sx)*4;
+  const tr=d[si],tg=d[si+1],tb=d[si+2];
+  const vis=new Uint8Array(w*h);
+  const stk=[sy*w+sx];
+  while(stk.length){
+    const pos=stk.pop();
+    if(vis[pos])continue; vis[pos]=1;
+    const di=pos*4;
+    if(d[di+3]===0)continue;
+    const dist=Math.sqrt((d[di]-tr)**2+(d[di+1]-tg)**2+(d[di+2]-tb)**2);
+    if(dist<=tol){
+      d[di+3]=0;
+      const px=pos%w,py=Math.floor(pos/w);
+      if(px>0)  stk.push(pos-1);
+      if(px<w-1)stk.push(pos+1);
+      if(py>0)  stk.push(pos-w);
+      if(py<h-1)stk.push(pos+w);
+    }
+  }
+  edCtx.putImageData(imgD,0,0);
+}
+
+function magicWandInRect(rect,tol){
+  const imgD=edCtx.getImageData(0,0,edCanvas.width,edCanvas.height);
+  const d=imgD.data, w=edCanvas.width, h=edCanvas.height;
+  const x1=Math.max(0,rect.x), y1=Math.max(0,rect.y);
+  const x2=Math.min(w-1,rect.x+rect.w), y2=Math.min(h-1,rect.y+rect.h);
+  // sample bg from border pixels of selection
+  let br=0,bg_=0,bb=0,cnt=0;
+  for(let cx=x1;cx<=x2;cx++){
+    [[cx,y1],[cx,y2]].forEach(([px,py])=>{const i=(py*w+px)*4;if(d[i+3]>0){br+=d[i];bg_+=d[i+1];bb+=d[i+2];cnt++;}});
+  }
+  for(let cy=y1+1;cy<y2;cy++){
+    [[x1,cy],[x2,cy]].forEach(([px,py])=>{const i=(py*w+px)*4;if(d[i+3]>0){br+=d[i];bg_+=d[i+1];bb+=d[i+2];cnt++;}});
+  }
+  if(cnt){br/=cnt;bg_/=cnt;bb/=cnt;}else{br=bg_=bb=255;}
+  // remove similar pixels within rect
+  for(let cy=y1;cy<=y2;cy++) for(let cx=x1;cx<=x2;cx++){
+    const i=(cy*w+cx)*4;
+    if(d[i+3]===0)continue;
+    const dist=Math.sqrt((d[i]-br)**2+(d[i+1]-bg_)**2+(d[i+2]-bb)**2);
+    if(dist<=tol) d[i+3]=0;
+  }
+  edCtx.putImageData(imgD,0,0);
+}
+
+// ── Brush ──────────────────────────────────────────────────────────────────
+function paintBrush(cx,cy){
+  const bs=parseInt($('bSize').value);
+  const imgD=edCtx.getImageData(0,0,edCanvas.width,edCanvas.height);
+  const d=imgD.data, w=edCanvas.width, h=edCanvas.height;
+  if(S.tool==='eraser'){
+    for(let dy=-bs;dy<=bs;dy++) for(let dx=-bs;dx<=bs;dx++){
+      if(dx*dx+dy*dy>bs*bs)continue;
+      const px=cx+dx,py=cy+dy;
+      if(px<0||px>=w||py<0||py>=h)continue;
+      d[(py*w+px)*4+3]=0;
+    }
+    edCtx.putImageData(imgD,0,0);
+  } else if(S.tool==='restore' && S.origForRestore){
+    const oCtx=S.origForRestore.getContext('2d');
+    const oD=oCtx.getImageData(0,0,edCanvas.width,edCanvas.height);
+    const od=oD.data;
+    for(let dy=-bs;dy<=bs;dy++) for(let dx=-bs;dx<=bs;dx++){
+      if(dx*dx+dy*dy>bs*bs)continue;
+      const px=cx+dx,py=cy+dy;
+      if(px<0||px>=w||py<0||py>=h)continue;
+      const i=(py*w+px)*4;
+      d[i]=od[i]; d[i+1]=od[i+1]; d[i+2]=od[i+2]; d[i+3]=od[i+3];
+    }
+    edCtx.putImageData(imgD,0,0);
+  }
+}
+
+// ── Undo / Redo ────────────────────────────────────────────────────────────
+function snapEd(){ return edCtx.getImageData(0,0,edCanvas.width,edCanvas.height); }
+function saveEdHistory(){
+  S.edHistory.push(snapEd());
+  if(S.edHistory.length>30) S.edHistory.shift();
+  S.edRedoStack=[];  // new action clears redo
+  updateUndoRedoBtns();
+}
+function snapshotCanvas(cv){ const c=mkCanvas(cv.width,cv.height); c.getContext('2d').drawImage(cv,0,0); return c; }
+
+function updateUndoRedoBtns(){
+  const u=$('undoEdBtn'), r=$('redoEdBtn');
+  if(u) u.disabled = S.edHistory.length<=1;
+  if(r) r.disabled = S.edRedoStack.length===0;
+}
+function doUndo(){
+  if(S.edHistory.length<=1) return;
+  S.edRedoStack.push(S.edHistory.pop());
+  if(S.edRedoStack.length>30) S.edRedoStack.shift();
+  edCtx.putImageData(S.edHistory[S.edHistory.length-1],0,0);
+  updateUndoRedoBtns();
+}
+function doRedo(){
+  if(!S.edRedoStack.length) return;
+  const state=S.edRedoStack.pop();
+  S.edHistory.push(state);
+  edCtx.putImageData(state,0,0);
+  updateUndoRedoBtns();
+}
+
+$('undoEdBtn').onclick=doUndo;
+$('redoEdBtn').onclick=doRedo;
+
+document.addEventListener('keydown',e=>{
+  if(!edModal.classList.contains('hide')){
+    if(e.ctrlKey && e.key==='z'&&!e.shiftKey){ e.preventDefault(); doUndo(); return; }
+    if(e.ctrlKey && (e.key==='y'||(e.key==='z'&&e.shiftKey))){ e.preventDefault(); doRedo(); return; }
+  }
+  if(e.key==='Escape' && !edModal.classList.contains('hide')){ edModal.classList.add('hide'); S.editIdx=null; }
+});
+
+// ── Export ─────────────────────────────────────────────────────────────────
+function dlTile(i){
+  const a=document.createElement('a');
+  a.download=`sticker_${String(i+1).padStart(2,'0')}.png`;
+  a.href=S.tiles[i].editC.toDataURL('image/png');
+  a.click();
+}
+
+$('exportAllBtn').onclick=async()=>{
+  if(!S.tiles.length)return;
+  showLoad('打包中...');
+  const zip=new JSZip();
+  for(let i=0;i<S.tiles.length;i++){
+    const b64=S.tiles[i].editC.toDataURL('image/png').split(',')[1];
+    zip.file(`sticker_${String(i+1).padStart(2,'0')}.png`,b64,{base64:true});
+  }
+  const blob=await zip.generateAsync({type:'blob'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.download='stickers.zip'; a.href=url; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  hideLoad(); setStatus('已匯出全部貼圖');
+};
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function showLoad(t){ loadTxt.textContent=t||'處理中...'; loading.classList.remove('hide'); }
+function setLoadTxt(t){ loadTxt.textContent=t; }
+function hideLoad(){ loading.classList.add('hide'); }
+function setStatus(t){ sbar.textContent=t; }
+
+window.addEventListener('resize',()=>{ if(S.img)renderOrig(); });
+
+// ── Left panel zoom ────────────────────────────────────────────────────────
+$('origZoomOut').onclick = () => {
+  S.origZoom = stepZoom(S.origZoom, -1);
+  $('origZoomVal').textContent = zoomLabel(S.origZoom);
+  if(S.origZoom===1){ origWrap.scrollLeft=0; origWrap.scrollTop=0; }
+  renderOrig();
+};
+$('origZoomIn').onclick = () => {
+  S.origZoom = stepZoom(S.origZoom, 1);
+  $('origZoomVal').textContent = zoomLabel(S.origZoom);
+  renderOrig();
+};
+
+// ── Editor zoom ────────────────────────────────────────────────────────────
+$('edZoomOut').onclick  = () => { S.edZoom=stepZoom(S.edZoom,-1); applyEdZoom(); };
+$('edZoomIn').onclick   = () => { S.edZoom=stepZoom(S.edZoom, 1); applyEdZoom(); };
+$('edZoomFit').onclick  = () => { S.edZoom=1; applyEdZoom(); };
+
+// ── Animation ──────────────────────────────────────────────────────────────
+const ANIM_PRESETS=[
+  {key:'none',  label:'靜態', nFrames:1,  delay:100, fn:null},
+  {key:'bounce',label:'彈跳', nFrames:20, delay:50,
+    fn:(ctx,W,H,t,ins)=>{ ctx.translate(0,-Math.abs(Math.sin(t*Math.PI*2))*H*0.18*ins); }},
+  {key:'shake', label:'搖擺', nFrames:16, delay:55,
+    fn:(ctx,W,H,t,ins)=>{ ctx.translate(Math.sin(t*Math.PI*4)*W*0.07*ins,0); }},
+  {key:'pulse', label:'脈衝', nFrames:20, delay:50,
+    fn:(ctx,W,H,t,ins)=>{ const s=1+Math.sin(t*Math.PI*2)*0.15*ins; ctx.translate(W/2,H/2);ctx.scale(s,s);ctx.translate(-W/2,-H/2); }},
+  {key:'spin',  label:'旋轉', nFrames:24, delay:60,
+    fn:(ctx,W,H,t,ins)=>{ ctx.translate(W/2,H/2);ctx.rotate(t*Math.PI*2);ctx.translate(-W/2,-H/2); }},
+  {key:'wave',  label:'波浪', nFrames:20, delay:60,
+    fn:(ctx,W,H,t,ins)=>{ ctx.translate(0,Math.sin(t*Math.PI*2)*H*0.08*ins); }},
+  {key:'blink', label:'閃爍', nFrames:16, delay:60,
+    fn:(ctx,W,H,t,ins)=>{ ctx.globalAlpha=0.3+0.7*(0.5+0.5*Math.sin(t*Math.PI*2)*ins); }},
+];
+const SPD_MAP=[0.15,0.25,0.4,0.6,0.8,1,1.5,2];  // index 0-7
+const INS_MAP=[0.1,0.2,0.35,0.5,0.7,1,1.5,2];   // index 0-7
+const A={tileIdx:null,preset:'bounce',speed:5,intensity:5,transparent:true};
+let animRaf=null,animFrames=[],animFrameIdx=0;
+
+// Build preset buttons
+(()=>{
+  const el=$('animPresets');
+  ANIM_PRESETS.forEach(p=>{
+    const btn=document.createElement('button');
+    btn.className='anim-btn'+(p.key===A.preset?' on':'');
+    btn.textContent=p.label; btn.dataset.key=p.key;
+    btn.onclick=()=>{ A.preset=p.key; el.querySelectorAll('.anim-btn').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); rebuildAnim(); };
+    el.appendChild(btn);
+  });
+})();
+
+$('animSpeed').oninput=()=>{ A.speed=parseInt($('animSpeed').value); $('animSpeedVal').textContent=SPD_MAP[A.speed]+'×'; rebuildAnim(); };
+$('animIntensity').oninput=()=>{ A.intensity=parseInt($('animIntensity').value); $('animIntensityVal').textContent=INS_MAP[A.intensity]+'×'; rebuildAnim(); };
+$('animTransp').onchange=()=>{ A.transparent=$('animTransp').checked; };
+$('closeAnimBtn').onclick=$('cancelAnimBtn').onclick=()=>{ stopAnimPreview(); $('animModal').classList.add('hide'); };
+$('exportAnimBtn').onclick=()=>exportAnimGIF().catch(e=>{ hideLoad(); alert('匯出失敗：'+e.message); });
+
+function openAnimModal(i){
+  A.tileIdx=i;
+  $('animTitle').textContent=`🎬 貼圖 #${i+1} 動畫`;
+  $('animModal').classList.remove('hide');
+  rebuildAnim();
+}
+
+function rebuildAnim(){ stopAnimPreview(); buildAnimFrames(); startAnimPreview(); }
+
+function buildAnimFrames(){
+  if(A.tileIdx===null) return;
+  const preset=ANIM_PRESETS.find(p=>p.key===A.preset);
+  const tile=S.tiles[A.tileIdx];
+  const SW=tile.editC.width, SH=tile.editC.height;
+  const maxPv=150;
+  const psc=Math.min(maxPv/SW,maxPv/SH,1);
+  const W=Math.round(SW*psc), H=Math.round(SH*psc);
+  const scaled=mkCanvas(W,H);
+  scaled.getContext('2d').drawImage(tile.editC,0,0,SW,SH,0,0,W,H);
+  const ins=INS_MAP[A.intensity];
+  animFrames=[];
+  for(let f=0;f<preset.nFrames;f++){
+    const t=f/preset.nFrames;
+    const fc=mkCanvas(W,H); const ctx=fc.getContext('2d');
+    ctx.clearRect(0,0,W,H);
+    ctx.save(); if(preset.fn) preset.fn(ctx,W,H,t,ins); ctx.drawImage(scaled,0,0); ctx.restore();
+    animFrames.push(fc);
+  }
+  const pv=$('animPrevCanvas'); pv.width=W; pv.height=H;
+  if(animFrames[0]) pv.getContext('2d').drawImage(animFrames[0],0,0);
+}
+
+function startAnimPreview(){
+  if(!animFrames.length) return;
+  const preset=ANIM_PRESETS.find(p=>p.key===A.preset);
+  const spd=SPD_MAP[A.speed]||1;
+  const delay=Math.round(preset.delay/spd);
+  const pv=$('animPrevCanvas');
+  animFrameIdx=0; let lastTs=0;
+  function loop(ts){
+    if(ts-lastTs>=delay){
+      animFrameIdx=(animFrameIdx+1)%animFrames.length;
+      const ctx=pv.getContext('2d'); ctx.clearRect(0,0,pv.width,pv.height);
+      ctx.drawImage(animFrames[animFrameIdx],0,0); lastTs=ts;
+    }
+    animRaf=requestAnimationFrame(loop);
+  }
+  animRaf=requestAnimationFrame(loop);
+}
+
+function stopAnimPreview(){ if(animRaf){cancelAnimationFrame(animRaf);animRaf=null;} }
+
+async function exportAnimGIF(){
+  const preset=ANIM_PRESETS.find(p=>p.key===A.preset); if(!preset) return;
+  if(typeof GIF==='undefined'){ alert('gif.js 尚未載入，請確認網路連線後重試'); return; }
+  showLoad('產生動畫 GIF...');
+  const tile=S.tiles[A.tileIdx];
+  const SW=tile.editC.width, SH=tile.editC.height;
+  const sc=Math.min(320/SW,320/SH,1);
+  const W=Math.round(SW*sc), H=Math.round(SH*sc);
+  const scaled=mkCanvas(W,H); scaled.getContext('2d').drawImage(tile.editC,0,0,SW,SH,0,0,W,H);
+  const ins=INS_MAP[A.intensity], spd=SPD_MAP[A.speed]||1;
+  const delay=Math.round(preset.delay/spd);
+  const TMASK=0xff00fe;
+  const tcR=(TMASK>>16)&0xff, tcG=(TMASK>>8)&0xff, tcB=TMASK&0xff;
+  return new Promise((resolve,reject)=>{
+    const gif=new GIF({workers:2,quality:8,width:W,height:H,
+      workerScript:'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js',
+      transparent:A.transparent?TMASK:null});
+    for(let f=0;f<preset.nFrames;f++){
+      const t=f/preset.nFrames;
+      const fc=mkCanvas(W,H); const ctx=fc.getContext('2d');
+      ctx.clearRect(0,0,W,H);
+      ctx.save(); if(preset.fn) preset.fn(ctx,W,H,t,ins); ctx.drawImage(scaled,0,0); ctx.restore();
+      const id=ctx.getImageData(0,0,W,H); const d=id.data;
+      if(A.transparent){
+        for(let j=0;j<d.length;j+=4){ if(d[j+3]<128){d[j]=tcR;d[j+1]=tcG;d[j+2]=tcB;} d[j+3]=255; }
+      } else {
+        for(let j=0;j<d.length;j+=4){ const a=d[j+3]/255; d[j]=Math.round(d[j]*a+255*(1-a));d[j+1]=Math.round(d[j+1]*a+255*(1-a));d[j+2]=Math.round(d[j+2]*a+255*(1-a));d[j+3]=255; }
+      }
+      ctx.putImageData(id,0,0);
+      gif.addFrame(fc,{delay,copy:true});
+    }
+    gif.on('finished',blob=>{ hideLoad(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.download=`sticker_${String(A.tileIdx+1).padStart(2,'0')}_anim.gif`; a.href=url; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); resolve(); });
+    gif.on('error',e=>{ hideLoad(); reject(e); });
+    gif.render();
+  });
+}
+
+// Touch → mouse forwarding for canvas interactions
+function fwdTouch(e, type) {
+  const t = type==='mouseup' ? e.changedTouches[0] : e.touches[0];
+  if(!t) return;
+  e.target.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,clientX:t.clientX,clientY:t.clientY,button:0}));
+}
+[origCanvas, edCanvas].forEach(cv=>{
+  cv.addEventListener('touchstart', e=>{e.preventDefault();fwdTouch(e,'mousedown');},{passive:false});
+  cv.addEventListener('touchmove',  e=>{e.preventDefault();fwdTouch(e,'mousemove');},{passive:false});
+  cv.addEventListener('touchend',   e=>{e.preventDefault();fwdTouch(e,'mouseup');  },{passive:false});
+});
+
+// AI 可用提示
+if(!aiRemoveBg){ setStatus('就緒 ｜ AI 去背不可用（CDN 載入失敗），將使用顏色去背'); }
+</script>
+</body>
+</html>
