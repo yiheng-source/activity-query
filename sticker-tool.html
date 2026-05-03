@@ -124,6 +124,12 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
 /* Brush cursor overlay */
 #brushCursor{position:absolute;border-radius:50%;pointer-events:none;display:none;transform:translate(-50%,-50%);z-index:10}
 
+/* LINE badge */
+.line-badge{font-size:9px;background:#06C755;color:#fff;border-radius:3px;padding:1px 4px;margin-left:3px;vertical-align:middle}
+.tile.line-ready{border-color:#06C755 !important}
+.tool-btn.line-btn{background:#06C755;color:#fff}
+.tool-btn.line-btn:hover{background:#08df60}
+
 /* Animation modal */
 .anim-body{flex:1;display:flex;gap:14px;padding:14px;overflow:hidden;min-height:0}
 .anim-prev-area{width:176px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;align-items:center}
@@ -280,6 +286,16 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
           <button class="tool-btn" id="tAiBg">🤖 AI 去背（整張）</button>
           <button class="tool-btn" id="tSimpleBg">🎨 顏色去背（整張）</button>
           <button class="tool-btn" id="tReset">↩️ 重設此貼圖</button>
+        </div>
+        <div class="tool-sec">
+          <span class="sec-lbl" style="color:#06C755">LINE 貼圖格式</span>
+          <button class="tool-btn line-btn" id="tLineFormat">📱 轉為 LINE 格式 (240×240)</button>
+          <p class="hint" style="color:#448844;line-height:1.7">
+            ・尺寸：240×240 px（必須）<br>
+            ・格式：PNG 透明背景<br>
+            ・檔案大小：≤300KB<br>
+            按下後自動等比縮放並置中
+          </p>
         </div>
         <div class="tool-sec">
           <span class="sec-lbl">縮放</span>
@@ -793,6 +809,11 @@ function renderGrid() {
       num.appendChild(badge);
       wrap.classList.add('custom-crop');
     }
+    if(t.editC.width===240 && t.editC.height===240){
+      const badge=document.createElement('span'); badge.className='line-badge'; badge.textContent='LINE';
+      num.appendChild(badge);
+      wrap.classList.add('line-ready');
+    }
     btns.append(eBtn,cBtn,aBtn,dBtn); ft.append(num,btns);
     wrap.append(cvWrap,ft);
     wrap.addEventListener('click',()=>openEditor(i));
@@ -813,6 +834,16 @@ function refreshTilePreview(i) {
   const ctx=tc.getContext('2d');
   ctx.clearRect(0,0,tc.width,tc.height);
   ctx.drawImage(t.editC,0,0);
+  // Sync LINE badge
+  const num=items[i].querySelector('.tile-num');
+  const existingBadge=num.querySelector('.line-badge');
+  if(existingBadge) existingBadge.remove();
+  items[i].classList.remove('line-ready');
+  if(t.editC.width===240 && t.editC.height===240){
+    const badge=document.createElement('span'); badge.className='line-badge'; badge.textContent='LINE';
+    num.appendChild(badge);
+    items[i].classList.add('line-ready');
+  }
 }
 
 // ── BG Removal Controls ────────────────────────────────────────────────────
@@ -983,6 +1014,37 @@ $('tReset').onclick=()=>{
   edCtx.clearRect(0,0,edCanvas.width,edCanvas.height);
   edCtx.drawImage(S.origForRestore,0,0);
   saveEdHistory();
+};
+
+$('tLineFormat').onclick=()=>{
+  if(S.editIdx===null)return;
+  const T=240;
+  function scaleToLine(src){
+    const sc=Math.min(T/src.width, T/src.height);
+    const dw=Math.round(src.width*sc), dh=Math.round(src.height*sc);
+    const c=mkCanvas(T,T); const ctx=c.getContext('2d');
+    ctx.drawImage(src,0,0,src.width,src.height,
+      Math.round((T-dw)/2), Math.round((T-dh)/2), dw, dh);
+    return c;
+  }
+  // Convert current editor content and the restore reference
+  const converted=scaleToLine(edCanvas);
+  S.origForRestore=scaleToLine(S.origForRestore);
+  // Resize canvas and draw
+  edCanvas.width=T; edCanvas.height=T;
+  edCtx.clearRect(0,0,T,T);
+  edCtx.drawImage(converted,0,0);
+  // Recalculate base scale for new dimensions
+  const inner=$('edInner');
+  const aw=inner.clientWidth-20, ah=inner.clientHeight-20;
+  S.edBaseSc=Math.min(aw/T, ah/T, 1);
+  S.edZoom=1;
+  applyEdZoom();
+  // Reset history (old entries have wrong dimensions)
+  S.edHistory=[snapEd()];
+  S.edRedoStack=[];
+  updateUndoRedoBtns();
+  setStatus(`貼圖 #${S.editIdx+1} 已轉為 LINE 格式（240×240px）`);
 };
 
 $('tAiBg').onclick=async()=>{
