@@ -357,8 +357,14 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
             <label class="tog"><input type="checkbox" id="animTransp" checked><span class="tog-s"></span></label>
           </label>
         </div>
-        <div class="anim-row" style="font-size:11px;color:#5a5a7a;line-height:1.6">
-          匯出格式：APNG（.png）・最大 320×270 px<br>符合 LINE 動態貼圖規格（5–20 格、1–4 秒、透明背景）
+        <div class="anim-row">
+          <label class="tog-wrap">
+            <span style="font-size:12px">LINE 格式限制（自動壓縮至 ≤1MB）</span>
+            <label class="tog"><input type="checkbox" id="animLineLimit" checked><span class="tog-s"></span></label>
+          </label>
+        </div>
+        <div class="anim-row" id="animSizeInfo" style="font-size:11px;color:#5a5a7a;line-height:1.6">
+          匯出格式：APNG（.png）・最大 320×270 px<br>符合 LINE 動態貼圖規格（5–20 格、1–4 秒）
         </div>
       </div>
     </div>
@@ -1253,7 +1259,7 @@ const ANIM_PRESETS=[
 ];
 const SPD_MAP=[0.15,0.25,0.4,0.6,0.8,1,1.5,2];  // index 0-7
 const INS_MAP=[0.1,0.2,0.35,0.5,0.7,1,1.5,2];   // index 0-7
-const A={tileIdx:null,preset:'bounce',speed:5,intensity:5,transparent:true};
+const A={tileIdx:null,preset:'bounce',speed:5,intensity:5,transparent:true,lineLimit:true};
 let animRaf=null,animFrames=[],animFrameIdx=0;
 
 // Build preset buttons
@@ -1271,6 +1277,7 @@ let animRaf=null,animFrames=[],animFrameIdx=0;
 $('animSpeed').oninput=()=>{ A.speed=parseInt($('animSpeed').value); $('animSpeedVal').textContent=SPD_MAP[A.speed]+'×'; rebuildAnim(); };
 $('animIntensity').oninput=()=>{ A.intensity=parseInt($('animIntensity').value); $('animIntensityVal').textContent=INS_MAP[A.intensity]+'×'; rebuildAnim(); };
 $('animTransp').onchange=()=>{ A.transparent=$('animTransp').checked; };
+$('animLineLimit').onchange=()=>{ A.lineLimit=$('animLineLimit').checked; };
 $('closeAnimBtn').onclick=$('cancelAnimBtn').onclick=()=>{ stopAnimPreview(); $('animModal').classList.add('hide'); };
 $('exportAnimBtn').onclick=()=>exportAnimAPNG().catch(e=>{ hideLoad(); alert('匯出失敗：'+e.message); });
 
@@ -1326,52 +1333,90 @@ function startAnimPreview(){
 
 function stopAnimPreview(){ if(animRaf){cancelAnimationFrame(animRaf);animRaf=null;} }
 
-async function exportAnimAPNG(){
-  const preset=ANIM_PRESETS.find(p=>p.key===A.preset); if(!preset) return;
-  if(typeof UPNG==='undefined'){ alert('UPNG.js 尚未載入，請確認網路連線後重試'); return; }
-  showLoad('產生動畫貼圖 APNG...');
-  await new Promise(r=>setTimeout(r,30)); // let UI update
-
-  const tile=S.tiles[A.tileIdx];
-  const SW=tile.editC.width, SH=tile.editC.height;
-  // LINE spec: max 320×270 px
-  const sc=Math.min(320/SW, 270/SH, 1);
-  const W=Math.round(SW*sc), H=Math.round(SH*sc);
-  const scaled=mkCanvas(W,H); scaled.getContext('2d').drawImage(tile.editC,0,0,SW,SH,0,0,W,H);
-  const ins=INS_MAP[A.intensity], spd=SPD_MAP[A.speed]||1;
-  const baseDelay=Math.round(preset.delay/spd);
-  // LINE allows 5–20 frames; cap at 20
-  const nFrames=Math.min(preset.nFrames, 20);
-
+// Build APNG frame pixel buffers at given output dimensions
+function buildApngFrames(srcCanvas, W, H, preset, nFrames, ins, delay, transparent) {
+  const src=mkCanvas(W,H);
+  src.getContext('2d').drawImage(srcCanvas,0,0,srcCanvas.width,srcCanvas.height,0,0,W,H);
   const bufs=[], dels=[];
   for(let f=0;f<nFrames;f++){
     const t=f/nFrames;
     const fc=mkCanvas(W,H); const ctx=fc.getContext('2d');
     ctx.clearRect(0,0,W,H);
-    ctx.save(); if(preset.fn) preset.fn(ctx,W,H,t,ins); ctx.drawImage(scaled,0,0); ctx.restore();
-    if(!A.transparent){
-      // composite onto white background
+    ctx.save(); if(preset.fn) preset.fn(ctx,W,H,t,ins); ctx.drawImage(src,0,0); ctx.restore();
+    if(!transparent){
       const bg=mkCanvas(W,H); const bCtx=bg.getContext('2d');
       bCtx.fillStyle='#fff'; bCtx.fillRect(0,0,W,H); bCtx.drawImage(fc,0,0);
-      const id=bCtx.getImageData(0,0,W,H);
-      bufs.push(id.data.buffer.slice(0));
+      bufs.push(bCtx.getImageData(0,0,W,H).data.buffer.slice(0));
     } else {
-      const id=ctx.getImageData(0,0,W,H);
-      bufs.push(id.data.buffer.slice(0));
+      bufs.push(ctx.getImageData(0,0,W,H).data.buffer.slice(0));
     }
-    dels.push(baseDelay);
+    dels.push(delay);
+  }
+  return {bufs, dels};
+}
+
+async function exportAnimAPNG(){
+  const preset=ANIM_PRESETS.find(p=>p.key===A.preset); if(!preset) return;
+  if(typeof UPNG==='undefined'){ alert('UPNG.js 尚未載入，請確認網路連線後重試'); return; }
+  showLoad('產生動畫貼圖 APNG...');
+  await new Promise(r=>setTimeout(r,30));
+
+  const tile=S.tiles[A.tileIdx];
+  const SW=tile.editC.width, SH=tile.editC.height;
+  const sc=Math.min(320/SW, 270/SH, 1);
+  const baseW=Math.round(SW*sc), baseH=Math.round(SH*sc);
+  const ins=INS_MAP[A.intensity], spd=SPD_MAP[A.speed]||1;
+  const delay=Math.round(preset.delay/spd);
+  const nFrames=Math.min(preset.nFrames, 20); // LINE max 20 frames
+  const LINE_MAX=1*1024*1024; // 1 MB
+
+  let apngBuf, finalW=baseW, finalH=baseH, finalCnum=0;
+
+  if(A.lineLimit){
+    // Try progressively smaller / lower-quality until ≤ 1MB
+    const attempts=[
+      {s:1.0, cnum:0},
+      {s:1.0, cnum:256},
+      {s:0.8, cnum:256},
+      {s:0.6, cnum:256},
+      {s:0.5, cnum:128},
+      {s:0.4, cnum:64},
+    ];
+    let found=false;
+    for(const opt of attempts){
+      const W=Math.max(16, Math.round(baseW*opt.s));
+      const H=Math.max(16, Math.round(baseH*opt.s));
+      const {bufs,dels}=buildApngFrames(tile.editC,W,H,preset,nFrames,ins,delay,A.transparent);
+      const buf=UPNG.encode(bufs,W,H,opt.cnum,dels);
+      // update info hint while trying
+      const si=$('animSizeInfo');
+      if(si) si.textContent=`嘗試 ${W}×${H}px / ${opt.cnum||'無損'} 色 → ${(buf.byteLength/1024).toFixed(0)}KB`;
+      if(buf.byteLength<=LINE_MAX){ apngBuf=buf; finalW=W; finalH=H; finalCnum=opt.cnum; found=true; break; }
+    }
+    if(!found){
+      hideLoad();
+      const si=$('animSizeInfo');
+      if(si) si.textContent='壓縮失敗，建議選擇較簡單的動畫效果或減少格數';
+      alert('無法壓縮至 1MB 以下，建議選擇較簡單的動畫效果'); return;
+    }
+  } else {
+    const {bufs,dels}=buildApngFrames(tile.editC,baseW,baseH,preset,nFrames,ins,delay,A.transparent);
+    apngBuf=UPNG.encode(bufs,baseW,baseH,0,dels);
   }
 
   try{
-    const apngBuf=UPNG.encode(bufs, W, H, 0, dels);
+    const sizeKB=(apngBuf.byteLength/1024).toFixed(1);
     const blob=new Blob([apngBuf],{type:'image/png'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.download=`sticker_${String(A.tileIdx+1).padStart(2,'0')}_anim.png`;
     a.href=url; a.click();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
+    // update hint to show result
+    const si=$('animSizeInfo');
+    if(si) si.innerHTML=`上次匯出：${finalW}×${finalH}px・${finalCnum||'無損'} 色・<b style="color:#88ffaa">${sizeKB}KB</b>`;
     hideLoad();
-    setStatus(`貼圖 #${A.tileIdx+1} 動畫已匯出（${nFrames} 格，${W}×${H}px）`);
+    setStatus(`貼圖 #${A.tileIdx+1} 動畫已匯出（${nFrames} 格，${finalW}×${finalH}px，${sizeKB}KB）`);
   }catch(e){ hideLoad(); throw e; }
 }
 
