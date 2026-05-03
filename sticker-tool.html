@@ -1328,6 +1328,14 @@ function stopAnimPreview(){ if(animRaf){cancelAnimationFrame(animRaf);animRaf=nu
 async function exportAnimGIF(){
   const preset=ANIM_PRESETS.find(p=>p.key===A.preset); if(!preset) return;
   if(typeof GIF==='undefined'){ alert('gif.js 尚未載入，請確認網路連線後重試'); return; }
+  showLoad('準備 GIF worker...');
+  // Fetch worker script and create a blob URL to bypass cross-origin Worker restriction
+  let workerBlobUrl;
+  try {
+    const resp=await fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    workerBlobUrl=URL.createObjectURL(await resp.blob());
+  } catch(e){ hideLoad(); alert('無法載入 GIF worker：'+e.message); return; }
   showLoad('產生動畫 GIF...');
   const tile=S.tiles[A.tileIdx];
   const SW=tile.editC.width, SH=tile.editC.height;
@@ -1340,7 +1348,7 @@ async function exportAnimGIF(){
   const tcR=(TMASK>>16)&0xff, tcG=(TMASK>>8)&0xff, tcB=TMASK&0xff;
   return new Promise((resolve,reject)=>{
     const gif=new GIF({workers:2,quality:8,width:W,height:H,
-      workerScript:'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js',
+      workerScript:workerBlobUrl,
       transparent:A.transparent?TMASK:null});
     for(let f=0;f<preset.nFrames;f++){
       const t=f/preset.nFrames;
@@ -1356,8 +1364,15 @@ async function exportAnimGIF(){
       ctx.putImageData(id,0,0);
       gif.addFrame(fc,{delay,copy:true});
     }
-    gif.on('finished',blob=>{ hideLoad(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.download=`sticker_${String(A.tileIdx+1).padStart(2,'0')}_anim.gif`; a.href=url; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); resolve(); });
-    gif.on('error',e=>{ hideLoad(); reject(e); });
+    gif.on('finished',blob=>{
+      URL.revokeObjectURL(workerBlobUrl);
+      hideLoad();
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.download=`sticker_${String(A.tileIdx+1).padStart(2,'0')}_anim.gif`; a.href=url; a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+      resolve();
+    });
+    gif.on('error',e=>{ URL.revokeObjectURL(workerBlobUrl); hideLoad(); reject(e); });
     gif.render();
   });
 }
