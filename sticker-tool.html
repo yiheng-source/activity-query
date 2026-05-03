@@ -313,7 +313,8 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.js"></script>
 
 <!-- Animation Modal -->
 <div class="modal-bg hide" id="animModal">
@@ -357,13 +358,13 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
           </label>
         </div>
         <div class="anim-row" style="font-size:11px;color:#5a5a7a;line-height:1.6">
-          匯出格式：GIF・最大 320×320 px<br>適合 LINE / Telegram / Discord 動態貼圖
+          匯出格式：APNG（.png）・最大 320×270 px<br>符合 LINE 動態貼圖規格（5–20 格、1–4 秒、透明背景）
         </div>
       </div>
     </div>
     <div class="modal-ftr">
       <button class="btn btn-s" id="cancelAnimBtn">取消</button>
-      <button class="btn btn-g" id="exportAnimBtn">💾 匯出動畫 GIF</button>
+      <button class="btn btn-g" id="exportAnimBtn">💾 匯出動畫貼圖 APNG</button>
     </div>
   </div>
 </div>
@@ -1271,7 +1272,7 @@ $('animSpeed').oninput=()=>{ A.speed=parseInt($('animSpeed').value); $('animSpee
 $('animIntensity').oninput=()=>{ A.intensity=parseInt($('animIntensity').value); $('animIntensityVal').textContent=INS_MAP[A.intensity]+'×'; rebuildAnim(); };
 $('animTransp').onchange=()=>{ A.transparent=$('animTransp').checked; };
 $('closeAnimBtn').onclick=$('cancelAnimBtn').onclick=()=>{ stopAnimPreview(); $('animModal').classList.add('hide'); };
-$('exportAnimBtn').onclick=()=>exportAnimGIF().catch(e=>{ hideLoad(); alert('匯出失敗：'+e.message); });
+$('exportAnimBtn').onclick=()=>exportAnimAPNG().catch(e=>{ hideLoad(); alert('匯出失敗：'+e.message); });
 
 function openAnimModal(i){
   A.tileIdx=i;
@@ -1325,56 +1326,53 @@ function startAnimPreview(){
 
 function stopAnimPreview(){ if(animRaf){cancelAnimationFrame(animRaf);animRaf=null;} }
 
-async function exportAnimGIF(){
+async function exportAnimAPNG(){
   const preset=ANIM_PRESETS.find(p=>p.key===A.preset); if(!preset) return;
-  if(typeof GIF==='undefined'){ alert('gif.js 尚未載入，請確認網路連線後重試'); return; }
-  showLoad('準備 GIF worker...');
-  // Fetch worker script and create a blob URL to bypass cross-origin Worker restriction
-  let workerBlobUrl;
-  try {
-    const resp=await fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');
-    if(!resp.ok) throw new Error('HTTP '+resp.status);
-    workerBlobUrl=URL.createObjectURL(await resp.blob());
-  } catch(e){ hideLoad(); alert('無法載入 GIF worker：'+e.message); return; }
-  showLoad('產生動畫 GIF...');
+  if(typeof UPNG==='undefined'){ alert('UPNG.js 尚未載入，請確認網路連線後重試'); return; }
+  showLoad('產生動畫貼圖 APNG...');
+  await new Promise(r=>setTimeout(r,30)); // let UI update
+
   const tile=S.tiles[A.tileIdx];
   const SW=tile.editC.width, SH=tile.editC.height;
-  const sc=Math.min(320/SW,320/SH,1);
+  // LINE spec: max 320×270 px
+  const sc=Math.min(320/SW, 270/SH, 1);
   const W=Math.round(SW*sc), H=Math.round(SH*sc);
   const scaled=mkCanvas(W,H); scaled.getContext('2d').drawImage(tile.editC,0,0,SW,SH,0,0,W,H);
   const ins=INS_MAP[A.intensity], spd=SPD_MAP[A.speed]||1;
-  const delay=Math.round(preset.delay/spd);
-  const TMASK=0xff00fe;
-  const tcR=(TMASK>>16)&0xff, tcG=(TMASK>>8)&0xff, tcB=TMASK&0xff;
-  return new Promise((resolve,reject)=>{
-    const gif=new GIF({workers:2,quality:8,width:W,height:H,
-      workerScript:workerBlobUrl,
-      transparent:A.transparent?TMASK:null});
-    for(let f=0;f<preset.nFrames;f++){
-      const t=f/preset.nFrames;
-      const fc=mkCanvas(W,H); const ctx=fc.getContext('2d');
-      ctx.clearRect(0,0,W,H);
-      ctx.save(); if(preset.fn) preset.fn(ctx,W,H,t,ins); ctx.drawImage(scaled,0,0); ctx.restore();
-      const id=ctx.getImageData(0,0,W,H); const d=id.data;
-      if(A.transparent){
-        for(let j=0;j<d.length;j+=4){ if(d[j+3]<128){d[j]=tcR;d[j+1]=tcG;d[j+2]=tcB;} d[j+3]=255; }
-      } else {
-        for(let j=0;j<d.length;j+=4){ const a=d[j+3]/255; d[j]=Math.round(d[j]*a+255*(1-a));d[j+1]=Math.round(d[j+1]*a+255*(1-a));d[j+2]=Math.round(d[j+2]*a+255*(1-a));d[j+3]=255; }
-      }
-      ctx.putImageData(id,0,0);
-      gif.addFrame(fc,{delay,copy:true});
+  const baseDelay=Math.round(preset.delay/spd);
+  // LINE allows 5–20 frames; cap at 20
+  const nFrames=Math.min(preset.nFrames, 20);
+
+  const bufs=[], dels=[];
+  for(let f=0;f<nFrames;f++){
+    const t=f/nFrames;
+    const fc=mkCanvas(W,H); const ctx=fc.getContext('2d');
+    ctx.clearRect(0,0,W,H);
+    ctx.save(); if(preset.fn) preset.fn(ctx,W,H,t,ins); ctx.drawImage(scaled,0,0); ctx.restore();
+    if(!A.transparent){
+      // composite onto white background
+      const bg=mkCanvas(W,H); const bCtx=bg.getContext('2d');
+      bCtx.fillStyle='#fff'; bCtx.fillRect(0,0,W,H); bCtx.drawImage(fc,0,0);
+      const id=bCtx.getImageData(0,0,W,H);
+      bufs.push(id.data.buffer.slice(0));
+    } else {
+      const id=ctx.getImageData(0,0,W,H);
+      bufs.push(id.data.buffer.slice(0));
     }
-    gif.on('finished',blob=>{
-      URL.revokeObjectURL(workerBlobUrl);
-      hideLoad();
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.download=`sticker_${String(A.tileIdx+1).padStart(2,'0')}_anim.gif`; a.href=url; a.click();
-      setTimeout(()=>URL.revokeObjectURL(url),1000);
-      resolve();
-    });
-    gif.on('error',e=>{ URL.revokeObjectURL(workerBlobUrl); hideLoad(); reject(e); });
-    gif.render();
-  });
+    dels.push(baseDelay);
+  }
+
+  try{
+    const apngBuf=UPNG.encode(bufs, W, H, 0, dels);
+    const blob=new Blob([apngBuf],{type:'image/png'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.download=`sticker_${String(A.tileIdx+1).padStart(2,'0')}_anim.png`;
+    a.href=url; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    hideLoad();
+    setStatus(`貼圖 #${A.tileIdx+1} 動畫已匯出（${nFrames} 格，${W}×${H}px）`);
+  }catch(e){ hideLoad(); throw e; }
 }
 
 // Touch → mouse forwarding for canvas interactions
