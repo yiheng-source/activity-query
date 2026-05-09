@@ -6,7 +6,7 @@
 <title>貼圖裁切 & 去背工具</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bubblegum+Sans&family=Boogaloo&family=Caveat:wght@400;700&family=Chewy&family=Fredoka+One&family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@400;700&family=Pacifico&family=Permanent+Marker&family=Lilita+One&family=Ranchers&family=ZCOOL+KuaiLe&family=M+PLUS+Rounded+1c:wght@400;700;900&family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bubblegum+Sans&family=Boogaloo&family=Caveat:wght@400;700&family=Chewy&family=Fredoka+One&family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@400;700&family=Pacifico&family=Permanent+Marker&family=Lilita+One&family=Ranchers&family=ZCOOL+KuaiLe&family=M+PLUS+Rounded+1c:wght@400;700;900&family=Zen+Maru+Gothic:wght@400;700;900&family=Ma+Shan+Zheng&family=Liu+Jian+Mao+Cao&family=Long+Cang&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
@@ -136,6 +136,9 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
 /* Custom cute TC fonts */
 @font-face{font-family:'粉圓體';src:url('https://cdn.jsdelivr.net/gh/justfont/open-huninn-font@v2.0/font/jf-openhuninn-2.0.ttf') format('truetype');font-display:swap}
 @font-face{font-family:'Cubic 11';src:url('https://cdn.jsdelivr.net/gh/ACh-K/Cubic-11@main/Cubic_11_1.013_R.ttf') format('truetype');font-display:swap}
+/* TC handwritten fonts */
+@font-face{font-family:'cwTeX楷書';src:url('https://cdn.jsdelivr.net/gh/l10n-tw/cwtex-q-fonts@master/woff2/cwTeXQKai-Medium.woff2') format('woff2');font-display:swap}
+@font-face{font-family:'cwTeX仿宋';src:url('https://cdn.jsdelivr.net/gh/l10n-tw/cwtex-q-fonts@master/woff2/cwTeXQFangsong-Medium.woff2') format('woff2');font-display:swap}
 
 /* Text overlay */
 #textOverlay{position:absolute;z-index:15;display:none;cursor:text}
@@ -313,6 +316,14 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
               <option value="'M PLUS Rounded 1c',sans-serif" style="font-family:'M PLUS Rounded 1c'">M PLUS Rounded（日系圓體）</option>
               <option value="'Zen Maru Gothic',sans-serif" style="font-family:'Zen Maru Gothic'">Zen Maru Gothic（丸圓）</option>
               <option value="'ZCOOL KuaiLe',sans-serif" style="font-family:'ZCOOL KuaiLe'">快樂體 ZCOOL（活潑）</option>
+            </optgroup>
+            <optgroup label="✍️ 繁中手寫字形">
+              <option value="'cwTeX楷書',serif">cwTeX 楷書（毛筆楷體）</option>
+              <option value="'cwTeX仿宋',serif">cwTeX 仿宋（仿宋楷書）</option>
+              <option value="'Ma Shan Zheng',cursive">馬善政毛筆楷（Ma Shan Zheng）</option>
+              <option value="'Liu Jian Mao Cao',cursive">劉建毛草（狂草書法）</option>
+              <option value="'Long Cang',cursive">龍藏（隨意手寫）</option>
+              <option value="'Zhi Mang Xing',cursive">知芒星（輕鬆手寫）</option>
             </optgroup>
             <optgroup label="📝 繁中標準字形">
               <option value="'Noto Sans TC',sans-serif">Noto Sans TC 黑體</option>
