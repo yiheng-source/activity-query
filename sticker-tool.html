@@ -130,6 +130,10 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
 .tool-btn.line-btn{background:#06C755;color:#fff}
 .tool-btn.line-btn:hover{background:#08df60}
 
+/* Text overlay */
+#textOverlay{position:absolute;z-index:15;display:none;cursor:text}
+#textInput{outline:none;border:2px dashed rgba(130,130,255,0.8);padding:2px 5px;min-width:8px;min-height:1.2em;white-space:pre;line-height:1.2;background:transparent;cursor:text}
+
 /* Animation modal */
 .anim-body{flex:1;display:flex;gap:14px;padding:14px;overflow:hidden;min-height:0}
 .anim-prev-area{width:176px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;align-items:center}
@@ -262,6 +266,13 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
           <canvas id="edCanvas"></canvas>
           <div id="selBox"></div>
           <div id="brushCursor"></div>
+          <div id="textOverlay">
+            <div id="textInput" contenteditable="true" spellcheck="false"></div>
+            <div style="display:flex;gap:4px;margin-top:3px">
+              <button id="textCommitBtn" style="background:#5555cc;color:#fff;border:none;border-radius:4px;padding:2px 9px;cursor:pointer;font-size:12px;font-family:inherit">✔ 確認</button>
+              <button id="textCancelBtn" style="background:#3a3a5a;color:#ccc;border:none;border-radius:4px;padding:2px 9px;cursor:pointer;font-size:12px;font-family:inherit">✕ 取消</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="editor-tools">
@@ -284,6 +295,34 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
             <input type="range" id="bSize" min="2" max="60" value="14" style="width:65px">
             <span class="rng-val" id="bSizeVal">14</span>
           </div>
+        </div>
+        <div class="tool-sec">
+          <span class="sec-lbl">文字</span>
+          <button class="tool-btn" id="tText">✍ 新增文字</button>
+          <select id="textFont" style="width:100%;margin-top:4px;background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;padding:3px 6px;font-size:12px;font-family:inherit">
+            <option value="sans-serif">系統字體</option>
+            <option value="Arial">Arial</option>
+            <option value="Impact">Impact（粗）</option>
+            <option value="Georgia">Georgia</option>
+            <option value="'Courier New'">Courier New</option>
+          </select>
+          <div class="rng-wrap" style="flex-wrap:wrap;margin-top:4px">
+            <label>大小</label>
+            <input type="range" id="textSize" min="8" max="120" value="32" style="width:60px">
+            <span class="rng-val" id="textSizeVal">32</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+            <span style="font-size:11px;color:#6666aa;white-space:nowrap">顏色：</span>
+            <div id="textColorSwatch" style="width:22px;height:22px;border-radius:4px;border:2px solid #555;background:#ffffff;cursor:pointer;flex-shrink:0" title="點擊選色"></div>
+            <input type="color" id="textColorInput" value="#ffffff" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none">
+          </div>
+          <div style="display:flex;gap:4px;margin-top:4px">
+            <button class="iBtn" id="textBoldBtn" style="font-weight:bold;min-width:28px" title="粗體">B</button>
+            <button class="iBtn" id="textItalicBtn" style="font-style:italic;min-width:28px" title="斜體">I</button>
+            <button class="iBtn" id="textStrokeBtn" style="font-size:11px;min-width:36px" title="黑色描邊">框</button>
+            <button class="iBtn" id="textShadowBtn" style="font-size:11px;min-width:36px" title="陰影">影</button>
+          </div>
+          <p class="hint" style="margin-top:4px">點圖放置文字<br>Enter 換行・Esc 取消</p>
         </div>
         <div class="tool-sec">
           <span class="sec-lbl">取色填色</span>
@@ -1025,7 +1064,7 @@ function updateColorSwatch(){
   const ci=$('colorInput'); if(ci) ci.value=hex;
 }
 
-const toolBtns={wand:$('tWand'),select:$('tSelect'),eraser:$('tEraser'),restore:$('tRestore'),colorpick:$('tColorPick'),colorpaint:$('tColorPaint')};
+const toolBtns={wand:$('tWand'),select:$('tSelect'),eraser:$('tEraser'),restore:$('tRestore'),colorpick:$('tColorPick'),colorpaint:$('tColorPaint'),text:$('tText')};
 function clearToolBtns(){Object.values(toolBtns).forEach(b=>b.classList.remove('on')); edCanvas.style.cursor='default';}
 function updateBrushCursor(e) {
   const bc=$('brushCursor'); if(!bc) return;
@@ -1046,11 +1085,12 @@ function updateBrushCursor(e) {
   bc.style.boxShadow='0 0 0 1px rgba(0,0,0,0.6)';
 }
 function setTool(name){
+  if(S.tool==='text' && name!=='text') hideTextOverlay();
   S.tool=name; clearToolBtns();
   if(name&&toolBtns[name]){toolBtns[name].classList.add('on');}
   if(name==='wand'||name==='colorpick')edCanvas.style.cursor='crosshair';
   else if(name==='eraser'||name==='restore'||name==='colorpaint')edCanvas.style.cursor='none';
-  else if(name==='select')edCanvas.style.cursor='crosshair';
+  else if(name==='select'||name==='text')edCanvas.style.cursor='text';
   else edCanvas.style.cursor='default';
   if(name!=='select'){selBox.style.display='none';S.selRect=null;}
   if(name!=='eraser'&&name!=='restore'&&name!=='colorpaint'){const bc=$('brushCursor');if(bc)bc.style.display='none';}
@@ -1060,6 +1100,7 @@ $('tWand').onclick=()=>setTool(S.tool==='wand'?null:'wand');
 $('tSelect').onclick=()=>setTool(S.tool==='select'?null:'select');
 $('tEraser').onclick=()=>setTool(S.tool==='eraser'?null:'eraser');
 $('tRestore').onclick=()=>setTool(S.tool==='restore'?null:'restore');
+$('tText').onclick=()=>setTool(S.tool==='text'?null:'text');
 $('tColorPick').onclick=()=>setTool(S.tool==='colorpick'?null:'colorpick');
 $('tColorPaint').onclick=()=>setTool(S.tool==='colorpaint'?null:'colorpaint');
 $('colorSwatch').onclick=()=>$('colorInput').click();
@@ -1155,6 +1196,9 @@ edCanvas.addEventListener('mousedown',e=>{
     S.selecting=true; S.selStart={x,y};
     S.selRect={x,y,w:0,h:0};
     selBox.style.display='none';
+  } else if(S.tool==='text'){
+    if($('textOverlay').style.display!=='none') commitText();
+    const {x:tx,y:ty}=edPos(e); showTextAt(tx,ty);
   } else if(S.tool==='colorpick'){
     // Sample pixel and auto-switch to paint mode
     const px=edCtx.getImageData(Math.max(0,Math.min(x,edCanvas.width-1)),Math.max(0,Math.min(y,edCanvas.height-1)),1,1).data;
@@ -1331,6 +1375,105 @@ function doRedo(){
 
 $('undoEdBtn').onclick=doUndo;
 $('redoEdBtn').onclick=doRedo;
+
+// ── Text Tool ──────────────────────────────────────────────────────────────
+let textPos=null, textColor='#ffffff';
+
+function buildTextFont(){
+  const bold=$('textBoldBtn').classList.contains('on');
+  const italic=$('textItalicBtn').classList.contains('on');
+  const size=parseInt($('textSize').value);
+  const family=$('textFont').value;
+  return `${italic?'italic ':''}${bold?'bold ':''}${size}px ${family}`;
+}
+
+function applyTextInputStyle(){
+  const inp=$('textInput'); if(!inp) return;
+  const r=edCanvas.getBoundingClientRect();
+  const sc=r.width/edCanvas.width;
+  const size=parseInt($('textSize').value);
+  inp.style.fontSize=Math.round(size*sc)+'px';
+  inp.style.fontFamily=$('textFont').value;
+  inp.style.fontWeight=$('textBoldBtn').classList.contains('on')?'bold':'normal';
+  inp.style.fontStyle=$('textItalicBtn').classList.contains('on')?'italic':'normal';
+  inp.style.color=textColor;
+  const stroke=$('textStrokeBtn').classList.contains('on');
+  const shadow=$('textShadowBtn').classList.contains('on');
+  inp.style.textShadow=stroke
+    ?'1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000'
+    :shadow?'2px 2px 4px rgba(0,0,0,0.9)':'none';
+}
+
+function showTextAt(cx,cy){
+  const r=edCanvas.getBoundingClientRect();
+  const ir=$('edInner').getBoundingClientRect();
+  const sc=r.width/edCanvas.width;
+  const overlay=$('textOverlay');
+  overlay.style.left=((r.left-ir.left)+cx*sc)+'px';
+  overlay.style.top =((r.top -ir.top )+cy*sc)+'px';
+  overlay.style.display='block';
+  textPos={x:cx,y:cy};
+  const inp=$('textInput');
+  inp.textContent='';
+  applyTextInputStyle();
+  setTimeout(()=>inp.focus(),0);
+}
+
+function hideTextOverlay(){
+  $('textOverlay').style.display='none';
+  textPos=null;
+}
+
+function commitText(){
+  const inp=$('textInput');
+  const text=inp.innerText||inp.textContent||'';
+  if(!text.trim()||!textPos){hideTextOverlay();return;}
+  const size=parseInt($('textSize').value);
+  const lineH=size*1.2;
+  const stroke=$('textStrokeBtn').classList.contains('on');
+  const shadow=$('textShadowBtn').classList.contains('on');
+  edCtx.save();
+  edCtx.font=buildTextFont();
+  edCtx.textBaseline='top';
+  if(shadow){edCtx.shadowColor='rgba(0,0,0,0.85)';edCtx.shadowBlur=6;edCtx.shadowOffsetX=2;edCtx.shadowOffsetY=2;}
+  const lines=text.split('\n');
+  if(stroke){
+    edCtx.strokeStyle='#000000';
+    edCtx.lineWidth=Math.max(1,size/8);
+    edCtx.lineJoin='round';
+    lines.forEach((l,i)=>edCtx.strokeText(l,textPos.x,textPos.y+i*lineH));
+  }
+  edCtx.fillStyle=textColor;
+  lines.forEach((l,i)=>edCtx.fillText(l,textPos.x,textPos.y+i*lineH));
+  edCtx.restore();
+  saveEdHistory();
+  hideTextOverlay();
+}
+
+// Text control handlers
+$('textSize').oninput=()=>{$('textSizeVal').textContent=$('textSize').value;applyTextInputStyle();};
+$('textFont').onchange=()=>applyTextInputStyle();
+$('textBoldBtn').onclick=()=>{$('textBoldBtn').classList.toggle('on');applyTextInputStyle();};
+$('textItalicBtn').onclick=()=>{$('textItalicBtn').classList.toggle('on');applyTextInputStyle();};
+$('textStrokeBtn').onclick=()=>{$('textStrokeBtn').classList.toggle('on');applyTextInputStyle();};
+$('textShadowBtn').onclick=()=>{$('textShadowBtn').classList.toggle('on');applyTextInputStyle();};
+$('textColorSwatch').onclick=()=>$('textColorInput').click();
+$('textColorInput').oninput=()=>{
+  textColor=$('textColorInput').value;
+  $('textColorSwatch').style.background=textColor;
+  applyTextInputStyle();
+};
+$('textCommitBtn').onclick=()=>commitText();
+$('textCancelBtn').onclick=()=>hideTextOverlay();
+// Prevent overlay clicks from triggering canvas mousedown
+$('textOverlay').addEventListener('mousedown',e=>e.stopPropagation());
+// Keyboard inside textInput
+$('textInput').addEventListener('keydown',e=>{
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();hideTextOverlay();}
+  if(e.key==='Enter'&&e.ctrlKey){e.preventDefault();commitText();}
+  // Block Ctrl+Z/Y so editor undo doesn't fire while typing
+  if(e.ctrlKey&&(e.key==='z'||e.key==='y')){e.stopPropagation();}
+});
 
 document.addEventListener('keydown',e=>{
   if(!edModal.classList.contains('hide')){
