@@ -1455,8 +1455,9 @@ function showTextAt(cx,cy){
   const ir=$('edInner').getBoundingClientRect();
   const sc=r.width/edCanvas.width;
   const overlay=$('textOverlay');
+  const handleH=$('textDragHandle').offsetHeight||22;
   overlay.style.left=((r.left-ir.left)+cx*sc)+'px';
-  overlay.style.top =((r.top -ir.top )+cy*sc)+'px';
+  overlay.style.top =((r.top -ir.top )+cy*sc-handleH)+'px';
   overlay.style.display='block';
   textPos={x:cx,y:cy};
   const inp=$('textInput');
@@ -1514,7 +1515,8 @@ function moveTextDrag(clientX,clientY){
   // Sync textPos to new canvas coords
   const r=edCanvas.getBoundingClientRect(), ir=$('edInner').getBoundingClientRect();
   const sc=r.width/edCanvas.width;
-  textPos={x:Math.round((newL-(r.left-ir.left))/sc), y:Math.round((newT-(r.top-ir.top))/sc)};
+  const handleH=$('textDragHandle').offsetHeight||22;
+  textPos={x:Math.round((newL-(r.left-ir.left))/sc), y:Math.round((newT+handleH-(r.top-ir.top))/sc)};
 }
 function endTextDrag(){ textDrag.active=false; }
 
