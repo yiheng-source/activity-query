@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>貼圖裁切 & 去背工具</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bubblegum+Sans&family=Boogaloo&family=Caveat:wght@400;700&family=Chewy&family=Fredoka+One&family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@400;700&family=Pacifico&family=Permanent+Marker&family=Lilita+One&family=Ranchers&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
@@ -300,11 +303,30 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
           <span class="sec-lbl">文字</span>
           <button class="tool-btn" id="tText">✍ 新增文字</button>
           <select id="textFont" style="width:100%;margin-top:4px;background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;padding:3px 6px;font-size:12px;font-family:inherit">
-            <option value="sans-serif">系統字體</option>
-            <option value="Arial">Arial</option>
-            <option value="Impact">Impact（粗）</option>
-            <option value="Georgia">Georgia</option>
-            <option value="'Courier New'">Courier New</option>
+            <optgroup label="── 繁體中文 ──">
+              <option value="'Noto Sans TC',sans-serif">Noto Sans TC 黑體</option>
+              <option value="'Noto Serif TC',serif">Noto Serif TC 宋體</option>
+            </optgroup>
+            <optgroup label="── 可愛活潑（英數）──">
+              <option value="'Fredoka One',cursive">Fredoka One ● 圓潤</option>
+              <option value="'Bubblegum Sans',cursive">Bubblegum Sans 🫧</option>
+              <option value="Chewy,cursive">Chewy ✨ 糖果</option>
+              <option value="Boogaloo,cursive">Boogaloo ★ 俏皮</option>
+              <option value="Pacifico,cursive">Pacifico 🌊 海浪</option>
+              <option value="'Lilita One',cursive">Lilita One 🎉 粗圓</option>
+              <option value="Ranchers,cursive">Ranchers 🤠 西部</option>
+            </optgroup>
+            <optgroup label="── 手寫風格（英數）──">
+              <option value="Caveat,cursive">Caveat ✏️ 手寫</option>
+              <option value="'Permanent Marker',cursive">Permanent Marker 🖊️ 麥克筆</option>
+            </optgroup>
+            <optgroup label="── 系統字形 ──">
+              <option value="sans-serif">系統黑體</option>
+              <option value="serif">系統明體</option>
+              <option value="Impact,sans-serif">Impact 粗體</option>
+              <option value="Georgia,serif">Georgia</option>
+              <option value="'Courier New',monospace">Courier New 等寬</option>
+            </optgroup>
           </select>
           <div class="rng-wrap" style="flex-wrap:wrap;margin-top:4px">
             <label>大小</label>
@@ -1452,7 +1474,10 @@ function commitText(){
 
 // Text control handlers
 $('textSize').oninput=()=>{$('textSizeVal').textContent=$('textSize').value;applyTextInputStyle();};
-$('textFont').onchange=()=>applyTextInputStyle();
+$('textFont').onchange=()=>{
+  $('textFont').style.fontFamily=$('textFont').value;
+  applyTextInputStyle();
+};
 $('textBoldBtn').onclick=()=>{$('textBoldBtn').classList.toggle('on');applyTextInputStyle();};
 $('textItalicBtn').onclick=()=>{$('textItalicBtn').classList.toggle('on');applyTextInputStyle();};
 $('textStrokeBtn').onclick=()=>{$('textStrokeBtn').classList.toggle('on');applyTextInputStyle();};
