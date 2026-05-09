@@ -1450,15 +1450,25 @@ function applyTextInputStyle(){
     :shadow?'2px 2px 4px rgba(0,0,0,0.9)':'none';
 }
 
+function textInputOffset(){
+  const inp=$('textInput');
+  const cs=getComputedStyle(inp);
+  return {
+    x: inp.offsetLeft + (parseFloat(cs.borderLeftWidth)||0) + (parseFloat(cs.paddingLeft)||0),
+    y: inp.offsetTop  + (parseFloat(cs.borderTopWidth) ||0) + (parseFloat(cs.paddingTop) ||0),
+  };
+}
 function showTextAt(cx,cy){
   const r=edCanvas.getBoundingClientRect();
   const ir=$('edInner').getBoundingClientRect();
   const sc=r.width/edCanvas.width;
   const overlay=$('textOverlay');
-  const handleH=$('textDragHandle').offsetHeight||22;
-  overlay.style.left=((r.left-ir.left)+cx*sc)+'px';
-  overlay.style.top =((r.top -ir.top )+cy*sc-handleH)+'px';
+  // Show at temp position so offsetTop/offsetLeft are live
+  overlay.style.left='0px'; overlay.style.top='0px';
   overlay.style.display='block';
+  const off=textInputOffset();
+  overlay.style.left=((r.left-ir.left)+cx*sc-off.x)+'px';
+  overlay.style.top =((r.top -ir.top )+cy*sc-off.y)+'px';
   textPos={x:cx,y:cy};
   const inp=$('textInput');
   inp.textContent='';
@@ -1512,11 +1522,10 @@ function moveTextDrag(clientX,clientY){
   const newL=textDrag.startLeft+dx, newT=textDrag.startTop+dy;
   $('textOverlay').style.left=newL+'px';
   $('textOverlay').style.top =newT+'px';
-  // Sync textPos to new canvas coords
   const r=edCanvas.getBoundingClientRect(), ir=$('edInner').getBoundingClientRect();
   const sc=r.width/edCanvas.width;
-  const handleH=$('textDragHandle').offsetHeight||22;
-  textPos={x:Math.round((newL-(r.left-ir.left))/sc), y:Math.round((newT+handleH-(r.top-ir.top))/sc)};
+  const off=textInputOffset();
+  textPos={x:Math.round((newL+off.x-(r.left-ir.left))/sc), y:Math.round((newT+off.y-(r.top-ir.top))/sc)};
 }
 function endTextDrag(){ textDrag.active=false; }
 
