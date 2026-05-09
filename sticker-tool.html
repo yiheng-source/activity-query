@@ -141,8 +141,9 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
 @font-face{font-family:'cwTeX仿宋';src:url('https://cdn.jsdelivr.net/gh/l10n-tw/cwtex-q-fonts@master/woff2/cwTeXQFangsong-Medium.woff2') format('woff2');font-display:swap}
 
 /* Text overlay */
-#textOverlay{position:absolute;z-index:15;display:none;cursor:text}
-#textInput{outline:none;border:2px dashed rgba(130,130,255,0.8);padding:2px 5px;min-width:8px;min-height:1.2em;white-space:pre;line-height:1.2;background:transparent;cursor:text}
+#textOverlay{position:absolute;z-index:15;display:none}
+#textDragHandle{cursor:move;background:rgba(70,70,200,0.75);padding:2px 8px;border-radius:4px 4px 0 0;font-size:10px;color:#ddd;user-select:none;text-align:center;letter-spacing:.5px}
+#textInput{outline:none;border:2px dashed rgba(130,130,255,0.8);border-top:none;padding:3px 5px;min-width:8px;min-height:1.2em;white-space:pre;line-height:1.2;background:transparent;cursor:text}
 
 /* Animation modal */
 .anim-body{flex:1;display:flex;gap:14px;padding:14px;overflow:hidden;min-height:0}
@@ -277,6 +278,7 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
           <div id="selBox"></div>
           <div id="brushCursor"></div>
           <div id="textOverlay">
+            <div id="textDragHandle">⠿ 拖曳移動位置</div>
             <div id="textInput" contenteditable="true" spellcheck="false"></div>
             <div style="display:flex;gap:4px;margin-top:3px">
               <button id="textCommitBtn" style="background:#5555cc;color:#fff;border:none;border-radius:4px;padding:2px 9px;cursor:pointer;font-size:12px;font-family:inherit">✔ 確認</button>
@@ -1493,6 +1495,35 @@ function commitText(){
   saveEdHistory();
   hideTextOverlay();
 }
+
+// ── Text overlay drag ──────────────────────────────────────────────────────
+let textDrag={active:false,startX:0,startY:0,startLeft:0,startTop:0};
+
+function startTextDrag(clientX,clientY){
+  textDrag.active=true;
+  textDrag.startX=clientX; textDrag.startY=clientY;
+  textDrag.startLeft=parseFloat($('textOverlay').style.left)||0;
+  textDrag.startTop =parseFloat($('textOverlay').style.top )||0;
+}
+function moveTextDrag(clientX,clientY){
+  if(!textDrag.active)return;
+  const dx=clientX-textDrag.startX, dy=clientY-textDrag.startY;
+  const newL=textDrag.startLeft+dx, newT=textDrag.startTop+dy;
+  $('textOverlay').style.left=newL+'px';
+  $('textOverlay').style.top =newT+'px';
+  // Sync textPos to new canvas coords
+  const r=edCanvas.getBoundingClientRect(), ir=$('edInner').getBoundingClientRect();
+  const sc=r.width/edCanvas.width;
+  textPos={x:Math.round((newL-(r.left-ir.left))/sc), y:Math.round((newT-(r.top-ir.top))/sc)};
+}
+function endTextDrag(){ textDrag.active=false; }
+
+$('textDragHandle').addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation();startTextDrag(e.clientX,e.clientY);});
+$('textDragHandle').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();startTextDrag(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
+document.addEventListener('mousemove',e=>{ if(textDrag.active) moveTextDrag(e.clientX,e.clientY); });
+document.addEventListener('touchmove',e=>{ if(textDrag.active){e.preventDefault();moveTextDrag(e.touches[0].clientX,e.touches[0].clientY);}},{passive:false});
+document.addEventListener('mouseup',endTextDrag);
+document.addEventListener('touchend',endTextDrag);
 
 // Text control handlers
 $('textSize').oninput=()=>{$('textSizeVal').textContent=$('textSize').value;applyTextInputStyle();};
