@@ -1454,19 +1454,22 @@ function buildTextFont(){
 
 function drawTextOnCtx(ctx, lines, size, stroke, shadow, alpha){
   const lineH=size*1.2;
+  const totalH=lines.length*lineH;
+  const offY=-totalH/2; // shift up so text block is vertically centred at origin
   ctx.save();
   ctx.globalAlpha=alpha;
-  ctx.translate(textState.x, textState.y);
+  ctx.translate(textState.x, textState.y); // anchor = centre of text block
   ctx.rotate(textState.angleDeg*Math.PI/180);
   ctx.font=buildTextFont();
   ctx.textBaseline='top';
+  ctx.textAlign='center'; // each line centred horizontally at x=0
   if(shadow){ctx.shadowColor='rgba(0,0,0,0.85)';ctx.shadowBlur=6;ctx.shadowOffsetX=2;ctx.shadowOffsetY=2;}
   if(stroke){
     ctx.strokeStyle='#000'; ctx.lineWidth=Math.max(1,size/8); ctx.lineJoin='round';
-    lines.forEach((l,i)=>ctx.strokeText(l,0,i*lineH));
+    lines.forEach((l,i)=>ctx.strokeText(l,0,offY+i*lineH));
   }
   ctx.fillStyle=textColor;
-  lines.forEach((l,i)=>ctx.fillText(l,0,i*lineH));
+  lines.forEach((l,i)=>ctx.fillText(l,0,offY+i*lineH));
   ctx.restore();
 }
 
