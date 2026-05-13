@@ -83,11 +83,18 @@ canvas{display:block}
 .tog input:checked+.tog-s{background:#5555cc}
 .tog input:checked+.tog-s::before{transform:translateX(16px)}
 
-/* Range */
-.rng-wrap{display:flex;align-items:center;gap:6px;font-size:12px}
-.rng-wrap label{color:#8888aa;white-space:nowrap}
-input[type=range]{width:75px;accent-color:#6666cc}
-.rng-val{color:#aaaacc;min-width:22px;font-size:12px}
+/* Range – bigger touch targets */
+.rng-wrap{display:flex;flex-direction:column;gap:4px;font-size:12px}
+.rng-wrap label{color:#8888aa;white-space:nowrap;font-size:11px}
+.rng-row{display:flex;align-items:center;gap:5px}
+input[type=range]{width:100%;accent-color:#6666cc;height:28px;cursor:pointer;-webkit-appearance:none;appearance:none;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:5px;background:#3a3a6a;border-radius:3px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#6666cc;border:2px solid #9999ff;margin-top:-9px;cursor:pointer}
+input[type=range]::-moz-range-track{height:5px;background:#3a3a6a;border-radius:3px}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#6666cc;border:2px solid #9999ff;cursor:pointer}
+.rng-val{color:#eee;min-width:28px;font-size:13px;font-weight:600;text-align:center}
+.step-btn{padding:4px 10px;font-size:16px;line-height:1;background:#2a2a5a;color:#ccccee;border:1px solid #3a3a6a;border-radius:5px;cursor:pointer;flex-shrink:0;user-select:none}
+.step-btn:hover{background:#3a3a7a;color:#fff}
 
 /* Separator */
 .sep{width:1px;height:22px;background:#2a2a4a;flex-shrink:0}
@@ -141,9 +148,10 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
 @font-face{font-family:'cwTeX仿宋';src:url('https://cdn.jsdelivr.net/gh/l10n-tw/cwtex-q-fonts@master/woff2/cwTeXQFangsong-Medium.woff2') format('woff2');font-display:swap}
 
 /* Text overlay – input panel (not tied to canvas position) */
-#textOverlay{position:absolute;z-index:15;display:none;background:rgba(18,18,42,0.94);border:1px solid #5555bb;border-radius:7px;min-width:188px;box-shadow:0 4px 16px rgba(0,0,0,0.6)}
-#textDragHandle{cursor:move;background:rgba(60,60,190,0.82);padding:4px 10px;border-radius:6px 6px 0 0;font-size:10px;color:#ccd;user-select:none;text-align:center;letter-spacing:.5px}
-#textInput{outline:none;border:1px solid rgba(100,100,220,0.6);border-radius:4px;padding:4px 7px;min-width:140px;min-height:1.4em;white-space:pre;line-height:1.4;background:rgba(28,28,55,0.85);cursor:text;color:#eee;margin:6px;display:block;box-sizing:border-box}
+#textOverlay{position:absolute;z-index:15;display:none;background:rgba(18,18,42,0.95);border:1px solid #5555bb;border-radius:7px;min-width:260px;box-shadow:0 4px 18px rgba(0,0,0,0.65)}
+#textDragHandle{cursor:move;background:rgba(60,60,190,0.85);padding:5px 10px;border-radius:6px 6px 0 0;font-size:10px;color:#ccd;user-select:none;text-align:center;letter-spacing:.5px}
+#textInput{outline:none;border:1px solid rgba(100,100,220,0.7);border-radius:5px;padding:6px 8px;min-width:220px;min-height:2.4em;white-space:pre;line-height:1.5;background:rgba(28,28,60,0.9);cursor:text;color:#eee;margin:7px 7px 5px;display:block;box-sizing:border-box;font-size:14px}
+#textInput:empty::before{content:'點此輸入文字…';color:#556;pointer-events:none}
 
 /* Animation modal */
 .anim-body{flex:1;display:flex;gap:14px;padding:14px;overflow:hidden;min-height:0}
@@ -280,18 +288,18 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
           <div id="textOverlay">
             <div id="textDragHandle">✎ 文字面板 ⠿ 拖移面板</div>
             <div id="textInput" contenteditable="true" spellcheck="false"></div>
-            <div style="background:rgba(50,50,100,0.5);margin:0 6px 6px;border-radius:5px;padding:5px 7px">
-              <div style="font-size:10px;color:#aab;margin-bottom:4px">↻ 旋轉角度</div>
-              <div style="display:flex;align-items:center;gap:6px">
-                <input type="range" id="textAngle" min="-180" max="180" value="0" style="flex:1;cursor:pointer;height:18px">
+            <div style="background:rgba(50,50,100,0.45);margin:0 7px 6px;border-radius:6px;padding:7px 8px">
+              <div style="font-size:10px;color:#aab;margin-bottom:5px;font-weight:600">↻ 旋轉角度</div>
+              <input type="range" id="textAngle" min="-180" max="180" value="0" style="width:100%;display:block;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:4px">
+                <button class="step-btn" data-target="textAngle" data-step="-10" style="flex:1;font-size:11px;padding:5px 2px">−10°</button>
+                <button class="step-btn" data-target="textAngle" data-step="-1"  style="flex:1;font-size:11px;padding:5px 2px">−1°</button>
                 <input type="number" id="textAngleDeg" min="-180" max="180" value="0"
-                  style="width:48px;background:#1e1e42;color:#eef;border:1px solid #667;border-radius:4px;padding:2px 4px;font-size:12px;text-align:center;font-family:inherit">
+                  style="flex:1;min-width:0;background:#1a1a44;color:#eef;border:1px solid #557;border-radius:4px;padding:5px 3px;font-size:12px;text-align:center;font-family:inherit">
+                <button class="step-btn" data-target="textAngle" data-step="1"   style="flex:1;font-size:11px;padding:5px 2px">+1°</button>
+                <button class="step-btn" data-target="textAngle" data-step="10"  style="flex:1;font-size:11px;padding:5px 2px">+10°</button>
               </div>
-              <div style="display:flex;justify-content:space-between;margin-top:3px">
-                <span style="font-size:10px;color:#668">-180°</span>
-                <button id="textAngleReset" style="font-size:10px;color:#99b;background:none;border:none;cursor:pointer;padding:0">↺ 重設0°</button>
-                <span style="font-size:10px;color:#668">+180°</span>
-              </div>
+              <button id="textAngleReset" style="width:100%;margin-top:6px;padding:5px;font-size:11px;color:#aab;background:rgba(40,40,90,0.7);border:1px solid #445;border-radius:4px;cursor:pointer">↺ 重設為 0°</button>
             </div>
             <div style="display:flex;gap:5px;padding:0 6px 7px">
               <button id="textCommitBtn" style="flex:1;background:#5555cc;color:#fff;border:none;border-radius:5px;padding:5px 8px;cursor:pointer;font-size:12px;font-family:inherit">✔ 確認貼上</button>
@@ -306,20 +314,28 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
           <span class="sec-lbl">去背工具</span>
           <button class="tool-btn" id="tWand">🪄 魔術棒（點擊去背）</button>
           <button class="tool-btn" id="tSelect">□ 框選後去背</button>
-          <div class="rng-wrap" style="flex-wrap:wrap">
+          <div class="rng-wrap" style="margin-top:4px">
             <label>容差</label>
-            <input type="range" id="edTol" min="5" max="120" value="35" style="width:65px">
-            <span class="rng-val" id="edTolVal">35</span>
+            <div class="rng-row">
+              <button class="step-btn" data-target="edTol" data-step="-5">−</button>
+              <span class="rng-val" id="edTolVal">35</span>
+              <button class="step-btn" data-target="edTol" data-step="5">＋</button>
+            </div>
+            <input type="range" id="edTol" min="5" max="120" value="35">
           </div>
         </div>
         <div class="tool-sec">
           <span class="sec-lbl">筆刷工具</span>
           <button class="tool-btn" id="tEraser">🧽 橡皮擦</button>
           <button class="tool-btn" id="tRestore">🖌️ 還原筆</button>
-          <div class="rng-wrap" style="flex-wrap:wrap">
+          <div class="rng-wrap" style="margin-top:4px">
             <label>大小</label>
-            <input type="range" id="bSize" min="2" max="60" value="14" style="width:65px">
-            <span class="rng-val" id="bSizeVal">14</span>
+            <div class="rng-row">
+              <button class="step-btn" data-target="bSize" data-step="-1">−</button>
+              <span class="rng-val" id="bSizeVal">14</span>
+              <button class="step-btn" data-target="bSize" data-step="1">＋</button>
+            </div>
+            <input type="range" id="bSize" min="2" max="60" value="14">
           </div>
         </div>
         <div class="tool-sec">
@@ -366,10 +382,14 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
               <option value="'Courier New',monospace">Courier New 等寬</option>
             </optgroup>
           </select>
-          <div class="rng-wrap" style="flex-wrap:wrap;margin-top:4px">
+          <div class="rng-wrap" style="margin-top:4px">
             <label>大小</label>
-            <input type="range" id="textSize" min="8" max="120" value="32" style="width:60px">
-            <span class="rng-val" id="textSizeVal">32</span>
+            <div class="rng-row">
+              <button class="step-btn" data-target="textSize" data-step="-2">−</button>
+              <span class="rng-val" id="textSizeVal">32</span>
+              <button class="step-btn" data-target="textSize" data-step="2">＋</button>
+            </div>
+            <input type="range" id="textSize" min="8" max="120" value="32">
           </div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
             <span style="font-size:11px;color:#6666aa;white-space:nowrap">顏色：</span>
@@ -1610,6 +1630,18 @@ document.addEventListener('keydown',e=>{
     if(e.ctrlKey && (e.key==='y'||(e.key==='z'&&e.shiftKey))){ e.preventDefault(); doRedo(); return; }
   }
   if(e.key==='Escape' && !edModal.classList.contains('hide')){ edModal.classList.add('hide'); S.editIdx=null; }
+});
+
+// ── Step buttons (−/+ next to sliders) ────────────────────────────────────
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('.step-btn[data-target]');
+  if(!btn) return;
+  const el=$(btn.dataset.target);
+  if(!el) return;
+  const step=parseInt(btn.dataset.step);
+  const newVal=Math.max(parseInt(el.min),Math.min(parseInt(el.max),parseInt(el.value)+step));
+  el.value=newVal;
+  el.dispatchEvent(new Event('input',{bubbles:true}));
 });
 
 // ── Export ─────────────────────────────────────────────────────────────────
