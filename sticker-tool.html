@@ -103,10 +103,20 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .sbar{background:#13132a;border-top:1px solid #2a2a4a;padding:4px 14px;font-size:12px;color:#6666aa;flex-shrink:0}
 
 /* Modal */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:flex;align-items:center;justify-content:center}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100}
 .modal-bg.hide{display:none}
-.modal{background:#1a1a2e;border:1px solid #3a3a5a;border-radius:10px;width:97vw;max-width:1400px;height:95vh;display:flex;flex-direction:column;overflow:hidden}
-.modal-hdr{padding:9px 16px;border-bottom:1px solid #2a2a4a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal{position:fixed;background:#1a1a2e;border:1px solid #3a3a5a;border-radius:10px;display:flex;flex-direction:column;overflow:hidden;min-width:360px;min-height:280px;box-shadow:0 8px 40px rgba(0,0,0,.7)}
+/* Resize handles */
+.modal-rz{position:absolute;z-index:210;user-select:none}
+.modal-rz.n {top:-4px;left:14px;right:14px;height:8px;cursor:ns-resize}
+.modal-rz.s {bottom:-4px;left:14px;right:14px;height:8px;cursor:ns-resize}
+.modal-rz.e {right:-4px;top:14px;bottom:14px;width:8px;cursor:ew-resize}
+.modal-rz.w {left:-4px;top:14px;bottom:14px;width:8px;cursor:ew-resize}
+.modal-rz.nw{top:-4px;left:-4px;width:14px;height:14px;cursor:nwse-resize}
+.modal-rz.ne{top:-4px;right:-4px;width:14px;height:14px;cursor:nesw-resize}
+.modal-rz.sw{bottom:-4px;left:-4px;width:14px;height:14px;cursor:nesw-resize}
+.modal-rz.se{bottom:-4px;right:-4px;width:18px;height:18px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 55%,rgba(120,120,230,.55) 55%);border-radius:0 0 10px 0}
+.modal-hdr{padding:9px 16px;border-bottom:1px solid #2a2a4a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;cursor:move;user-select:none}
 .modal-hdr h2{font-size:15px;color:#aaaaff}
 .modal-body{flex:1;display:flex;gap:10px;padding:10px;overflow:hidden;min-height:0}
 .editor-area{flex:1;background:repeating-conic-gradient(#2a2a3a 0% 25%,#1a1a2a 0% 50%) 0 0/14px 14px;border-radius:7px;overflow:auto;min-width:0}
@@ -176,7 +186,7 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
   .rpanel{flex:none;min-height:60vw}
   .hdr{flex-wrap:wrap;gap:6px;padding:8px 10px}
   .tb{flex-wrap:wrap;gap:5px;padding:5px 8px}
-  .modal{width:100vw;height:100dvh;border-radius:0;border:none}
+  .modal{border-radius:0;border:none;box-shadow:none}
   .modal-body{flex-direction:column;overflow-y:auto}
   .editor-area{flex:none;height:58vw;min-height:200px}
   .tgrid{grid-template-rows:auto;grid-template-columns:repeat(2,1fr);overflow-y:auto;align-content:start}
@@ -1104,8 +1114,8 @@ function openEditor(i) {
   S.tool=null; clearToolBtns();
   $('edTitle').textContent=`編輯貼圖 #${i+1}`;
   selBox.style.display='none';
+  modalInitPos();
   edModal.classList.remove('hide');
-  // modal must be visible before we can measure
   requestAnimationFrame(() => {
     const inner=$('edInner');
     const aw=inner.clientWidth-20, ah=inner.clientHeight-20;
@@ -1630,6 +1640,82 @@ document.addEventListener('keydown',e=>{
     if(e.ctrlKey && (e.key==='y'||(e.key==='z'&&e.shiftKey))){ e.preventDefault(); doRedo(); return; }
   }
   if(e.key==='Escape' && !edModal.classList.contains('hide')){ edModal.classList.add('hide'); S.editIdx=null; }
+});
+
+// ── Modal resize & drag ────────────────────────────────────────────────────
+const MODAL_EL = edModal.querySelector('.modal');
+
+function modalInitPos(){
+  const vw=window.innerWidth, vh=window.innerHeight;
+  // Check if already has user-set position (don't override on re-open)
+  if(MODAL_EL.dataset.userSized) return;
+  if(vw<=700){
+    Object.assign(MODAL_EL.style,{left:'0px',top:'0px',width:vw+'px',height:vh+'px'});
+  } else {
+    const mw=Math.min(Math.round(vw*0.97),1400);
+    const mh=Math.round(vh*0.95);
+    Object.assign(MODAL_EL.style,{
+      left:Math.round((vw-mw)/2)+'px', top:Math.round((vh-mh)/2)+'px',
+      width:mw+'px', height:mh+'px'
+    });
+  }
+}
+
+function modalRefit(){
+  if(S.editIdx===null) return;
+  requestAnimationFrame(()=>{
+    const inner=$('edInner');
+    const aw=inner.clientWidth-20, ah=inner.clientHeight-20;
+    S.edBaseSc=Math.min(aw/edCanvas.width, ah/edCanvas.height, 1);
+    applyEdZoom();
+  });
+}
+
+// Add 8-direction resize handles
+['n','ne','e','se','s','sw','w','nw'].forEach(dir=>{
+  const h=document.createElement('div');
+  h.className=`modal-rz ${dir}`;
+  MODAL_EL.appendChild(h);
+  h.addEventListener('mousedown',e=>{
+    e.preventDefault(); e.stopPropagation();
+    const r=MODAL_EL.getBoundingClientRect();
+    const sx=e.clientX, sy=e.clientY, sl=r.left, st=r.top, sw=r.width, sh=r.height;
+    const vw=window.innerWidth, vh=window.innerHeight;
+    const onMove=ev=>{
+      const dx=ev.clientX-sx, dy=ev.clientY-sy;
+      let l=sl,t=st,w=sw,hh=sh;
+      if(dir.includes('e')) w =Math.max(360,Math.min(vw-sl-2,sw+dx));
+      if(dir.includes('w')){ w=Math.max(360,Math.min(sw+sl-2,sw-dx)); l=sl+sw-w; }
+      if(dir.includes('s')) hh=Math.max(280,Math.min(vh-st-2,sh+dy));
+      if(dir.includes('n')){ hh=Math.max(280,Math.min(sh+st-2,sh-dy)); t=st+sh-hh; }
+      Object.assign(MODAL_EL.style,{left:l+'px',top:t+'px',width:w+'px',height:hh+'px'});
+    };
+    const onUp=()=>{
+      MODAL_EL.dataset.userSized='1';
+      document.removeEventListener('mousemove',onMove);
+      document.removeEventListener('mouseup',onUp);
+      modalRefit();
+    };
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+  });
+});
+
+// Drag to move via header
+MODAL_EL.querySelector('.modal-hdr').addEventListener('mousedown',e=>{
+  if(e.target.closest('button')) return;
+  e.preventDefault();
+  const r=MODAL_EL.getBoundingClientRect();
+  const sx=e.clientX, sy=e.clientY, sl=r.left, st=r.top, sw=r.width, sh=r.height;
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const onMove=ev=>{
+    const l=Math.max(0,Math.min(vw-sw,sl+ev.clientX-sx));
+    const t=Math.max(0,Math.min(vh-sh,st+ev.clientY-sy));
+    MODAL_EL.style.left=l+'px'; MODAL_EL.style.top=t+'px';
+  };
+  const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
 });
 
 // ── Step buttons (−/+ next to sliders) ────────────────────────────────────
