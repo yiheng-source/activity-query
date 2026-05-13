@@ -140,10 +140,10 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
 @font-face{font-family:'cwTeX楷書';src:url('https://cdn.jsdelivr.net/gh/l10n-tw/cwtex-q-fonts@master/woff2/cwTeXQKai-Medium.woff2') format('woff2');font-display:swap}
 @font-face{font-family:'cwTeX仿宋';src:url('https://cdn.jsdelivr.net/gh/l10n-tw/cwtex-q-fonts@master/woff2/cwTeXQFangsong-Medium.woff2') format('woff2');font-display:swap}
 
-/* Text overlay */
-#textOverlay{position:absolute;z-index:15;display:none}
-#textDragHandle{cursor:move;background:rgba(70,70,200,0.75);padding:2px 8px;border-radius:4px 4px 0 0;font-size:10px;color:#ddd;user-select:none;text-align:center;letter-spacing:.5px}
-#textInput{outline:none;border:2px dashed rgba(130,130,255,0.8);border-top:none;padding:3px 5px;min-width:8px;min-height:1.2em;white-space:pre;line-height:1.2;background:transparent;cursor:text}
+/* Text overlay – input panel (not tied to canvas position) */
+#textOverlay{position:absolute;z-index:15;display:none;background:rgba(18,18,42,0.94);border:1px solid #5555bb;border-radius:7px;min-width:188px;box-shadow:0 4px 16px rgba(0,0,0,0.6)}
+#textDragHandle{cursor:move;background:rgba(60,60,190,0.82);padding:4px 10px;border-radius:6px 6px 0 0;font-size:10px;color:#ccd;user-select:none;text-align:center;letter-spacing:.5px}
+#textInput{outline:none;border:1px solid rgba(100,100,220,0.6);border-radius:4px;padding:4px 7px;min-width:140px;min-height:1.4em;white-space:pre;line-height:1.4;background:rgba(28,28,55,0.85);cursor:text;color:#eee;margin:6px;display:block;box-sizing:border-box}
 
 /* Animation modal */
 .anim-body{flex:1;display:flex;gap:14px;padding:14px;overflow:hidden;min-height:0}
@@ -278,12 +278,18 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
           <div id="selBox"></div>
           <div id="brushCursor"></div>
           <div id="textOverlay">
-            <div id="textDragHandle">⠿ 拖曳移動位置</div>
+            <div id="textDragHandle">✎ 文字面板 ⠿ 拖移面板</div>
             <div id="textInput" contenteditable="true" spellcheck="false"></div>
-            <div style="display:flex;gap:4px;margin-top:3px">
-              <button id="textCommitBtn" style="background:#5555cc;color:#fff;border:none;border-radius:4px;padding:2px 9px;cursor:pointer;font-size:12px;font-family:inherit">✔ 確認</button>
-              <button id="textCancelBtn" style="background:#3a3a5a;color:#ccc;border:none;border-radius:4px;padding:2px 9px;cursor:pointer;font-size:12px;font-family:inherit">✕ 取消</button>
+            <div style="display:flex;align-items:center;gap:5px;padding:0 7px 4px">
+              <span style="font-size:10px;color:#99a;white-space:nowrap">旋轉</span>
+              <input type="range" id="textAngle" min="-180" max="180" value="0" style="flex:1;cursor:pointer">
+              <span id="textAngleVal" style="font-size:10px;color:#ccd;min-width:32px;text-align:right">0°</span>
             </div>
+            <div style="display:flex;gap:5px;padding:0 7px 7px">
+              <button id="textCommitBtn" style="flex:1;background:#5555cc;color:#fff;border:none;border-radius:5px;padding:4px 8px;cursor:pointer;font-size:12px;font-family:inherit">✔ 確認貼上</button>
+              <button id="textCancelBtn" style="background:#3a3a5a;color:#ccc;border:none;border-radius:5px;padding:4px 9px;cursor:pointer;font-size:12px;font-family:inherit">✕</button>
+            </div>
+            <p style="margin:0 7px 6px;font-size:10px;color:#778;line-height:1.3">在圖上拖曳移動文字位置</p>
           </div>
         </div>
       </div>
@@ -368,7 +374,12 @@ select{background:#2a2a4a;color:#ccc;border:1px solid #3a3a5a;border-radius:4px;
             <button class="iBtn" id="textStrokeBtn" style="font-size:11px;min-width:36px" title="黑色描邊">框</button>
             <button class="iBtn" id="textShadowBtn" style="font-size:11px;min-width:36px" title="陰影">影</button>
           </div>
-          <p class="hint" style="margin-top:4px">點圖放置文字<br>Enter 換行・Esc 取消</p>
+          <div class="rng-wrap" style="flex-wrap:wrap;margin-top:4px">
+            <label>旋轉</label>
+            <input type="range" id="textAngleSide" min="-180" max="180" value="0" style="width:70px">
+            <span class="rng-val" id="textAngleSideVal">0°</span>
+          </div>
+          <p class="hint" style="margin-top:4px">點圖放置・圖上拖曳移位<br>Ctrl+Enter 確認・Esc 取消</p>
         </div>
         <div class="tool-sec">
           <span class="sec-lbl">取色填色</span>
@@ -1243,8 +1254,12 @@ edCanvas.addEventListener('mousedown',e=>{
     S.selRect={x,y,w:0,h:0};
     selBox.style.display='none';
   } else if(S.tool==='text'){
-    if($('textOverlay').style.display!=='none') commitText();
-    const {x:tx,y:ty}=edPos(e); showTextAt(tx,ty);
+    if(!textState){
+      const {x:tx,y:ty}=edPos(e); showTextAt(tx,ty);
+    } else {
+      // Start dragging text position on canvas
+      textPosDrag={active:true,startX:e.clientX,startY:e.clientY,startTX:textState.x,startTY:textState.y};
+    }
   } else if(S.tool==='colorpick'){
     // Sample pixel and auto-switch to paint mode
     const px=edCtx.getImageData(Math.max(0,Math.min(x,edCanvas.width-1)),Math.max(0,Math.min(y,edCanvas.height-1)),1,1).data;
@@ -1423,7 +1438,8 @@ $('undoEdBtn').onclick=doUndo;
 $('redoEdBtn').onclick=doRedo;
 
 // ── Text Tool ──────────────────────────────────────────────────────────────
-let textPos=null, textColor='#ffffff';
+let textState=null; // {x,y,angleDeg} in canvas coords — null when inactive
+let textColor='#ffffff';
 
 function buildTextFont(){
   const bold=$('textBoldBtn').classList.contains('on');
@@ -1433,140 +1449,155 @@ function buildTextFont(){
   return `${italic?'italic ':''}${bold?'bold ':''}${size}px ${family}`;
 }
 
-function applyTextInputStyle(){
-  const inp=$('textInput'); if(!inp) return;
-  const r=edCanvas.getBoundingClientRect();
-  const sc=r.width/edCanvas.width;
-  const size=parseInt($('textSize').value);
-  inp.style.fontSize=Math.round(size*sc)+'px';
-  inp.style.fontFamily=$('textFont').value;
-  inp.style.fontWeight=$('textBoldBtn').classList.contains('on')?'bold':'normal';
-  inp.style.fontStyle=$('textItalicBtn').classList.contains('on')?'italic':'normal';
-  inp.style.color=textColor;
-  const stroke=$('textStrokeBtn').classList.contains('on');
-  const shadow=$('textShadowBtn').classList.contains('on');
-  inp.style.textShadow=stroke
-    ?'1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000'
-    :shadow?'2px 2px 4px rgba(0,0,0,0.9)':'none';
+function drawTextOnCtx(ctx, lines, size, stroke, shadow, alpha){
+  const lineH=size*1.2;
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  ctx.translate(textState.x, textState.y);
+  ctx.rotate(textState.angleDeg*Math.PI/180);
+  ctx.font=buildTextFont();
+  ctx.textBaseline='top';
+  if(shadow){ctx.shadowColor='rgba(0,0,0,0.85)';ctx.shadowBlur=6;ctx.shadowOffsetX=2;ctx.shadowOffsetY=2;}
+  if(stroke){
+    ctx.strokeStyle='#000'; ctx.lineWidth=Math.max(1,size/8); ctx.lineJoin='round';
+    lines.forEach((l,i)=>ctx.strokeText(l,0,i*lineH));
+  }
+  ctx.fillStyle=textColor;
+  lines.forEach((l,i)=>ctx.fillText(l,0,i*lineH));
+  ctx.restore();
 }
 
-function textInputOffset(){
+function drawGhostText(){
+  if(!textState) return;
+  // Restore canvas to last history snapshot (erases previous ghost)
+  const snap=S.edHistory[S.edHistory.length-1];
+  if(snap) edCtx.putImageData(snap,0,0);
   const inp=$('textInput');
-  const cs=getComputedStyle(inp);
-  return {
-    x: inp.offsetLeft + (parseFloat(cs.borderLeftWidth)||0) + (parseFloat(cs.paddingLeft)||0),
-    y: inp.offsetTop  + (parseFloat(cs.borderTopWidth) ||0) + (parseFloat(cs.paddingTop) ||0),
-  };
+  const text=inp.innerText||inp.textContent||'';
+  if(!text.trim()) return;
+  const size=parseInt($('textSize').value);
+  const lines=text.split('\n');
+  const stroke=$('textStrokeBtn').classList.contains('on');
+  const shadow=$('textShadowBtn').classList.contains('on');
+  drawTextOnCtx(edCtx, lines, size, stroke, shadow, 0.72);
 }
+
 function showTextAt(cx,cy){
-  const r=edCanvas.getBoundingClientRect();
-  const ir=$('edInner').getBoundingClientRect();
-  const sc=r.width/edCanvas.width;
+  textState={x:cx, y:cy, angleDeg:0};
+  $('textAngle').value=0; $('textAngleVal').textContent='0°';
+  $('textAngleSide').value=0; $('textAngleSideVal').textContent='0°';
   const overlay=$('textOverlay');
-  // Show at temp position so offsetTop/offsetLeft are live
-  overlay.style.left='0px'; overlay.style.top='0px';
+  if(overlay.style.display==='none'){
+    overlay.style.left='6px'; overlay.style.top='6px';
+  }
   overlay.style.display='block';
-  const off=textInputOffset();
-  overlay.style.left=((r.left-ir.left)+cx*sc-off.x)+'px';
-  overlay.style.top =((r.top -ir.top )+cy*sc-off.y)+'px';
-  textPos={x:cx,y:cy};
   const inp=$('textInput');
   inp.textContent='';
-  applyTextInputStyle();
   setTimeout(()=>inp.focus(),0);
+  drawGhostText();
 }
 
 function hideTextOverlay(){
   $('textOverlay').style.display='none';
-  textPos=null;
+  if(textState){
+    const snap=S.edHistory[S.edHistory.length-1];
+    if(snap) edCtx.putImageData(snap,0,0);
+  }
+  textState=null;
 }
 
 function commitText(){
+  if(!textState){hideTextOverlay();return;}
   const inp=$('textInput');
   const text=inp.innerText||inp.textContent||'';
-  if(!text.trim()||!textPos){hideTextOverlay();return;}
+  if(!text.trim()){hideTextOverlay();return;}
+  // Restore base state then draw at full opacity
+  const snap=S.edHistory[S.edHistory.length-1];
+  if(snap) edCtx.putImageData(snap,0,0);
   const size=parseInt($('textSize').value);
-  const lineH=size*1.2;
+  const lines=text.split('\n');
   const stroke=$('textStrokeBtn').classList.contains('on');
   const shadow=$('textShadowBtn').classList.contains('on');
-  edCtx.save();
-  edCtx.font=buildTextFont();
-  edCtx.textBaseline='top';
-  if(shadow){edCtx.shadowColor='rgba(0,0,0,0.85)';edCtx.shadowBlur=6;edCtx.shadowOffsetX=2;edCtx.shadowOffsetY=2;}
-  const lines=text.split('\n');
-  if(stroke){
-    edCtx.strokeStyle='#000000';
-    edCtx.lineWidth=Math.max(1,size/8);
-    edCtx.lineJoin='round';
-    lines.forEach((l,i)=>edCtx.strokeText(l,textPos.x,textPos.y+i*lineH));
-  }
-  edCtx.fillStyle=textColor;
-  lines.forEach((l,i)=>edCtx.fillText(l,textPos.x,textPos.y+i*lineH));
-  edCtx.restore();
+  drawTextOnCtx(edCtx, lines, size, stroke, shadow, 1.0);
   saveEdHistory();
   hideTextOverlay();
 }
 
-// ── Text overlay drag ──────────────────────────────────────────────────────
+// ── Panel drag (moves the overlay panel itself) ────────────────────────────
 let textDrag={active:false,startX:0,startY:0,startLeft:0,startTop:0};
-
-function startTextDrag(clientX,clientY){
-  textDrag.active=true;
-  textDrag.startX=clientX; textDrag.startY=clientY;
-  textDrag.startLeft=parseFloat($('textOverlay').style.left)||0;
-  textDrag.startTop =parseFloat($('textOverlay').style.top )||0;
+function startPanelDrag(clientX,clientY){
+  textDrag={active:true,startX:clientX,startY:clientY,
+    startLeft:parseFloat($('textOverlay').style.left)||0,
+    startTop :parseFloat($('textOverlay').style.top )||0};
 }
-function moveTextDrag(clientX,clientY){
+function movePanelDrag(clientX,clientY){
   if(!textDrag.active)return;
-  const dx=clientX-textDrag.startX, dy=clientY-textDrag.startY;
-  const newL=textDrag.startLeft+dx, newT=textDrag.startTop+dy;
-  $('textOverlay').style.left=newL+'px';
-  $('textOverlay').style.top =newT+'px';
-  const r=edCanvas.getBoundingClientRect(), ir=$('edInner').getBoundingClientRect();
-  const sc=r.width/edCanvas.width;
-  const off=textInputOffset();
-  textPos={x:Math.round((newL+off.x-(r.left-ir.left))/sc), y:Math.round((newT+off.y-(r.top-ir.top))/sc)};
+  $('textOverlay').style.left=(textDrag.startLeft+clientX-textDrag.startX)+'px';
+  $('textOverlay').style.top =(textDrag.startTop +clientY-textDrag.startY)+'px';
 }
-function endTextDrag(){ textDrag.active=false; }
 
-$('textDragHandle').addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation();startTextDrag(e.clientX,e.clientY);});
-$('textDragHandle').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();startTextDrag(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
-document.addEventListener('mousemove',e=>{ if(textDrag.active) moveTextDrag(e.clientX,e.clientY); });
-document.addEventListener('touchmove',e=>{ if(textDrag.active){e.preventDefault();moveTextDrag(e.touches[0].clientX,e.touches[0].clientY);}},{passive:false});
-document.addEventListener('mouseup',endTextDrag);
-document.addEventListener('touchend',endTextDrag);
+// ── Canvas text-position drag ──────────────────────────────────────────────
+let textPosDrag={active:false,startX:0,startY:0,startTX:0,startTY:0};
+
+$('textDragHandle').addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation();startPanelDrag(e.clientX,e.clientY);});
+$('textDragHandle').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();startPanelDrag(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
+document.addEventListener('mousemove',e=>{
+  movePanelDrag(e.clientX,e.clientY);
+  if(textPosDrag.active&&textState){
+    const sc=edCanvas.getBoundingClientRect().width/edCanvas.width;
+    textState.x=textPosDrag.startTX+(e.clientX-textPosDrag.startX)/sc;
+    textState.y=textPosDrag.startTY+(e.clientY-textPosDrag.startY)/sc;
+    drawGhostText();
+  }
+});
+document.addEventListener('touchmove',e=>{
+  if(textDrag.active){e.preventDefault();movePanelDrag(e.touches[0].clientX,e.touches[0].clientY);}
+  if(textPosDrag.active&&textState){
+    e.preventDefault();
+    const sc=edCanvas.getBoundingClientRect().width/edCanvas.width;
+    textState.x=textPosDrag.startTX+(e.touches[0].clientX-textPosDrag.startX)/sc;
+    textState.y=textPosDrag.startTY+(e.touches[0].clientY-textPosDrag.startY)/sc;
+    drawGhostText();
+  }
+},{passive:false});
+document.addEventListener('mouseup',()=>{textDrag.active=false; textPosDrag.active=false;});
+document.addEventListener('touchend',()=>{textDrag.active=false; textPosDrag.active=false;});
+
+function syncAngle(deg){
+  if(!textState) return;
+  textState.angleDeg=deg;
+  $('textAngle').value=deg; $('textAngleVal').textContent=deg+'°';
+  $('textAngleSide').value=deg; $('textAngleSideVal').textContent=deg+'°';
+  drawGhostText();
+}
 
 // Text control handlers
-$('textSize').oninput=()=>{$('textSizeVal').textContent=$('textSize').value;applyTextInputStyle();};
-$('textFont').onchange=()=>{
-  $('textFont').style.fontFamily=$('textFont').value;
-  applyTextInputStyle();
-};
-$('textBoldBtn').onclick=()=>{$('textBoldBtn').classList.toggle('on');applyTextInputStyle();};
-$('textItalicBtn').onclick=()=>{$('textItalicBtn').classList.toggle('on');applyTextInputStyle();};
-$('textStrokeBtn').onclick=()=>{$('textStrokeBtn').classList.toggle('on');applyTextInputStyle();};
-$('textShadowBtn').onclick=()=>{$('textShadowBtn').classList.toggle('on');applyTextInputStyle();};
+$('textSize').oninput=()=>{$('textSizeVal').textContent=$('textSize').value;drawGhostText();};
+$('textFont').onchange=()=>{$('textFont').style.fontFamily=$('textFont').value;drawGhostText();};
+$('textBoldBtn').onclick=()=>{$('textBoldBtn').classList.toggle('on');drawGhostText();};
+$('textItalicBtn').onclick=()=>{$('textItalicBtn').classList.toggle('on');drawGhostText();};
+$('textStrokeBtn').onclick=()=>{$('textStrokeBtn').classList.toggle('on');drawGhostText();};
+$('textShadowBtn').onclick=()=>{$('textShadowBtn').classList.toggle('on');drawGhostText();};
 $('textColorSwatch').onclick=()=>$('textColorInput').click();
-$('textColorInput').oninput=()=>{
-  textColor=$('textColorInput').value;
-  $('textColorSwatch').style.background=textColor;
-  applyTextInputStyle();
-};
+$('textColorInput').oninput=()=>{textColor=$('textColorInput').value;$('textColorSwatch').style.background=textColor;drawGhostText();};
+$('textAngle').oninput=()=>syncAngle(parseInt($('textAngle').value));
+$('textAngleSide').oninput=()=>syncAngle(parseInt($('textAngleSide').value));
 $('textCommitBtn').onclick=()=>commitText();
 $('textCancelBtn').onclick=()=>hideTextOverlay();
 // Prevent overlay clicks from triggering canvas mousedown
 $('textOverlay').addEventListener('mousedown',e=>e.stopPropagation());
-// Keyboard inside textInput
+$('textOverlay').addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
+// Live ghost update on typing
+$('textInput').addEventListener('input',drawGhostText);
 $('textInput').addEventListener('keydown',e=>{
   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();hideTextOverlay();}
   if(e.key==='Enter'&&e.ctrlKey){e.preventDefault();commitText();}
-  // Block Ctrl+Z/Y so editor undo doesn't fire while typing
   if(e.ctrlKey&&(e.key==='z'||e.key==='y')){e.stopPropagation();}
 });
 
 document.addEventListener('keydown',e=>{
   if(!edModal.classList.contains('hide')){
-    if(e.ctrlKey && e.key==='z'&&!e.shiftKey){ e.preventDefault(); doUndo(); return; }
+    if(e.ctrlKey && e.key==='z'&&!e.shiftKey){ e.preventDefault(); if(textState) hideTextOverlay(); else doUndo(); return; }
     if(e.ctrlKey && (e.key==='y'||(e.key==='z'&&e.shiftKey))){ e.preventDefault(); doRedo(); return; }
   }
   if(e.key==='Escape' && !edModal.classList.contains('hide')){ edModal.classList.add('hide'); S.editIdx=null; }
