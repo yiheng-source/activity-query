@@ -91,12 +91,6 @@
     <h1>🎉 2026個人保險理賠群自強活動</h1>
     <p>員工活動資訊查詢</p>
   </div>
-  <div id="notes-area" style="display:none">
-    <div class="notes-box">
-      <div class="notes-title">⚠️ 須注意事項</div>
-      <div class="notes-content" id="notes-content"></div>
-    </div>
-  </div>
   <div class="search-row">
     <input type="text" id="emp-input" placeholder="請輸入員編"
            onkeydown="if(event.key==='Enter')doSearch()"
@@ -104,6 +98,12 @@
     <button class="btn btn-primary" onclick="doSearch()">查詢</button>
   </div>
   <div id="result-area"></div>
+  <div id="notes-area" style="display:none">
+    <div class="notes-box">
+      <div class="notes-title">⚠️ 須注意事項</div>
+      <div class="notes-content" id="notes-content"></div>
+    </div>
+  </div>
   <div class="qr-wrap">
     <h3>揃描 QR Code 開啟此查詢頁面</h3>
     <div id="qrcode"></div>

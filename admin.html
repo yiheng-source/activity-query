@@ -688,12 +688,6 @@ function buildIndexHTML(title, notes, data) {
 '    <h1>🎉 ' + escHtmlAttr(title) + '</h1>\n' +
 '    <p>員工活動資訊查詢</p>\n' +
 '  </div>\n' +
-'  <div id="notes-area" style="display:none">\n' +
-'    <div class="notes-box">\n' +
-'      <div class="notes-title">⚠️ 須注意事項</div>\n' +
-'      <div class="notes-content" id="notes-content"></div>\n' +
-'    </div>\n' +
-'  </div>\n' +
 '  <div class="search-row">\n' +
 '    <input type="text" id="emp-input" placeholder="請輸入員編"\n' +
 '           onkeydown="if(event.key===\'Enter\')doSearch()"\n' +
@@ -701,6 +695,12 @@ function buildIndexHTML(title, notes, data) {
 '    <button class="btn btn-primary" onclick="doSearch()">查詢</button>\n' +
 '  </div>\n' +
 '  <div id="result-area"></div>\n' +
+'  <div id="notes-area" style="display:none">\n' +
+'    <div class="notes-box">\n' +
+'      <div class="notes-title">⚠️ 須注意事項</div>\n' +
+'      <div class="notes-content" id="notes-content"></div>\n' +
+'    </div>\n' +
+'  </div>\n' +
 '  <div class="qr-wrap">\n' +
 '    <h3>揃描 QR Code 開啟此查詢頁面</h3>\n' +
 '    <div id="qrcode"></div>\n' +
