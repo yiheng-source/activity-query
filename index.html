@@ -80,6 +80,9 @@
     .qr-url{font-size:0.72em;color:var(--muted);word-break:break-all;margin-bottom:12px;}
     @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
     .fade-in{animation:fadeUp 0.3s ease;}
+    .notes-box{background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius);padding:14px 16px;margin-bottom:18px;}
+    .notes-title{font-size:0.82em;font-weight:700;color:#92400e;margin-bottom:6px;}
+    .notes-content{font-size:0.88em;color:#78350f;line-height:1.6;white-space:pre-wrap;}
   </style>
 </head>
 <body>
@@ -87,6 +90,12 @@
   <div class="logo">
     <h1>🎉 2026個人保險理賠群自強活動</h1>
     <p>員工活動資訊查詢</p>
+  </div>
+  <div id="notes-area" style="display:none">
+    <div class="notes-box">
+      <div class="notes-title">⚠️ 須注意事項</div>
+      <div class="notes-content" id="notes-content"></div>
+    </div>
   </div>
   <div class="search-row">
     <input type="text" id="emp-input" placeholder="請輸入員編"
@@ -2499,9 +2508,11 @@ var EMPLOYEE_DATA = [
     "table": "32"
   }
 ];
+var NOTES_TEXT='';
 window.addEventListener("DOMContentLoaded",function(){
   var url=window.location.href;
   document.getElementById("qr-url-text").textContent=url;
+  if(NOTES_TEXT){document.getElementById("notes-content").textContent=NOTES_TEXT;document.getElementById("notes-area").style.display="block";}
   new QRCode(document.getElementById("qrcode"),{
     text:url,width:180,height:180,
     colorDark:"#1e293b",colorLight:"#ffffff",
